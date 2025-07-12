@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type ShortenerHandler struct {
@@ -32,7 +33,7 @@ func (h *ShortenerHandler) HandleMainPage() http.HandlerFunc {
 
 func (h *ShortenerHandler) handlePostShortUrl(rw http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
-	if contentType != "text/plain" {
+	if !strings.HasPrefix(contentType, "text/plain") {
 		http.Error(rw, "incorrect content type", http.StatusBadRequest)
 		return
 	}
@@ -62,7 +63,7 @@ func (h *ShortenerHandler) handlePostShortUrl(rw http.ResponseWriter, r *http.Re
 
 func (h *ShortenerHandler) handleGetShortUrl(rw http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
-	if contentType != "text/plain" {
+	if !strings.HasPrefix(contentType, "text/plain") {
 		http.Error(rw, "incorrect content type", http.StatusBadRequest)
 		return
 	}
