@@ -11,8 +11,7 @@ func main() {
 	storage := repository.NewInMemoryRepository()
 	urlShortener := service.NewUrlShortener(storage)
 	shortenerHandler := handler.NewShortenerHandler(*urlShortener)
-	http.HandleFunc(`/`, shortenerHandler.PostShortUrlHandler())
-	http.HandleFunc(`/{shortUrl}`, shortenerHandler.GetShortUrlHandler())
+	http.HandleFunc(`/`, shortenerHandler.HandleMainPage())
 
 	err := http.ListenAndServe(`:8080`, nil)
 	if err != nil {
