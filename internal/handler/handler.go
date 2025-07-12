@@ -62,17 +62,6 @@ func (h *ShortenerHandler) handlePostShortURL(rw http.ResponseWriter, r *http.Re
 }
 
 func (h *ShortenerHandler) handleGetShortURL(rw http.ResponseWriter, r *http.Request) {
-	// TODO: check if content type validation required
-	// Request example:
-	// GET /EwHXdJfB HTTP/1.1
-	// Host: localhost:8080
-	// Content-Type: text/plain
-	//contentType := r.Header.Get("Content-Type")
-	//if !strings.HasPrefix(contentType, "text/plain") {
-	//	http.Error(rw, "incorrect content type", http.StatusBadRequest)
-	//	return
-	//}
-
 	shortURL := r.URL.Path[1:]
 	if shortURL == "" {
 		http.Error(rw, "short url is empty", http.StatusBadRequest)
