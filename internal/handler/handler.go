@@ -4,6 +4,7 @@ import (
 	"github.com/bezjen/shortener/internal/service"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 type ShortenerHandler struct {
@@ -33,6 +34,7 @@ func (h *ShortenerHandler) handlePostShortUrl(rw http.ResponseWriter, r *http.Re
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "text/plain" {
 		http.Error(rw, "incorrect content type", http.StatusBadRequest)
+		return
 	}
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
@@ -41,9 +43,15 @@ func (h *ShortenerHandler) handlePostShortUrl(rw http.ResponseWriter, r *http.Re
 		return
 	}
 	bodyString := string(body)
+	_, errValidation := url.ParseRequestURI(bodyString)
+	if errValidation != nil {
+		http.Error(rw, "failed to parse url", http.StatusBadRequest)
+		return
+	}
 	shortUrl, err := h.shortener.GenerateShortUrlPart(bodyString)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	resultUrl := "http://localhost:8080/" + shortUrl
@@ -56,6 +64,7 @@ func (h *ShortenerHandler) handleGetShortUrl(rw http.ResponseWriter, r *http.Req
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "text/plain" {
 		http.Error(rw, "incorrect content type", http.StatusBadRequest)
+		return
 	}
 
 	shortUrl := r.URL.Path[1:]
@@ -66,8 +75,9 @@ func (h *ShortenerHandler) handleGetShortUrl(rw http.ResponseWriter, r *http.Req
 	resultUrl, err := h.shortener.GetUrlByShortUrlPart(shortUrl)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	rw.Header().Set("Content-Type", "text/plain")
+	rw.Header().Set("Location", resultUrl)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
-	rw.Write([]byte(resultUrl))
 }
