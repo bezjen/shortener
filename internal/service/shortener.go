@@ -7,43 +7,43 @@ import (
 )
 
 const (
-	shortUrlLength   = 8
+	shortURLLength   = 8
 	charset          = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	maxAttemptsCount = 10
 )
 
-type UrlShortener struct {
+type URLShortener struct {
 	storage repository.Repository
 }
 
-func NewUrlShortener(storage repository.Repository) *UrlShortener {
-	return &UrlShortener{
+func NewURLShortener(storage repository.Repository) *URLShortener {
+	return &URLShortener{
 		storage: storage,
 	}
 }
 
-func (u *UrlShortener) GenerateShortUrlPart(url string) (string, error) {
-	shortUrl := generateShort(u.storage)
-	if shortUrl == nil {
+func (u *URLShortener) GenerateShortURLPart(url string) (string, error) {
+	shortURL := generateShort(u.storage)
+	if shortURL == nil {
 		return "", errors.New("failed to generate short url")
 	}
-	u.storage.Save(*shortUrl, url)
-	return *shortUrl, nil
+	u.storage.Save(*shortURL, url)
+	return *shortURL, nil
 }
 
-func (u *UrlShortener) GetUrlByShortUrlPart(shortUrlPart string) (string, error) {
-	resultUrl := u.storage.GetByShortUrl(shortUrlPart)
-	if resultUrl == "" {
+func (u *URLShortener) GetURLByShortURLPart(shortURLPart string) (string, error) {
+	resultURL := u.storage.GetByShortURL(shortURLPart)
+	if resultURL == "" {
 		return "", errors.New("url not found")
 	}
-	return resultUrl, nil
+	return resultURL, nil
 }
 
 func generateShort(rep repository.Repository) *string {
 	for i := 0; i < maxAttemptsCount; i++ {
-		shortUrl := generateRandomString(shortUrlLength)
-		if rep.GetByShortUrl(shortUrl) == "" {
-			return &shortUrl
+		shortURL := generateRandomString(shortURLLength)
+		if rep.GetByShortURL(shortURL) == "" {
+			return &shortURL
 		}
 	}
 	return nil

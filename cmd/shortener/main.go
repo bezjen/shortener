@@ -9,7 +9,7 @@ import (
 
 func main() {
 	storage := repository.NewInMemoryRepository()
-	urlShortener := service.NewUrlShortener(storage)
+	urlShortener := service.NewURLShortener(storage)
 	shortenerHandler := handler.NewShortenerHandler(*urlShortener)
 	http.HandleFunc(`/`, shortenerHandler.HandleMainPage())
 

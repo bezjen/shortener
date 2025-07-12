@@ -10,10 +10,10 @@ func NewInMemoryRepository() *InMemoryRepository {
 	}
 }
 
-func (m *InMemoryRepository) Save(shortUrl string, url string) {
-	m.storage[shortUrl] = url
+func (m *InMemoryRepository) Save(shortURL string, url string) {
+	m.storage[shortURL] = url
 }
 
-func (m *InMemoryRepository) GetByShortUrl(shortUrl string) string {
-	return m.storage[shortUrl]
+func (m *InMemoryRepository) GetByShortURL(shortURL string) string {
+	return m.storage[shortURL]
 }
