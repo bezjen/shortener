@@ -12,6 +12,8 @@ const (
 	maxAttemptsCount = 10
 )
 
+var GenerateError = errors.New("failed to generate short url")
+
 type URLShortener struct {
 	storage repository.Repository
 }
@@ -23,12 +25,18 @@ func NewURLShortener(storage repository.Repository) *URLShortener {
 }
 
 func (u *URLShortener) GenerateShortURLPart(url string) (string, error) {
-	shortURL, err := u.generateShort()
-	if err != nil {
-		return "", err
+	for i := 0; i < maxAttemptsCount; i++ {
+		shortURL := generateRandomString(shortURLLength)
+		err := u.storage.Save(shortURL, url)
+		if err != nil {
+			if errors.Is(err, repository.ErrConflict) {
+				continue
+			}
+			return "", GenerateError
+		}
+		return shortURL, nil
 	}
-	u.storage.Save(shortURL, url)
-	return shortURL, nil
+	return "", GenerateError
 }
 
 func (u *URLShortener) GetURLByShortURLPart(shortURLPart string) (string, error) {
@@ -37,17 +45,6 @@ func (u *URLShortener) GetURLByShortURLPart(shortURLPart string) (string, error)
 		return "", err
 	}
 	return resultURL, nil
-}
-
-func (u *URLShortener) generateShort() (string, error) {
-	for i := 0; i < maxAttemptsCount; i++ {
-		shortURL := generateRandomString(shortURLLength)
-		_, err := u.storage.GetByShortURL(shortURL)
-		if errors.Is(err, repository.ErrNotFound) {
-			return shortURL, nil
-		}
-	}
-	return "", errors.New("failed to generate short url")
 }
 
 func generateRandomString(length int) string {
