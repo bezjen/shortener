@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"bytes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -54,6 +56,42 @@ func TestHandleGetShortURL(t *testing.T) {
 			assert.Equal(t, "text/plain", contentType, "Content-Type didn't match expected")
 			location := res.Header.Get("Location")
 			assert.Equal(t, tt.expectedLocation, location, "Location didn't match expected")
+		})
+	}
+}
+
+func TestHandlePostShortURL(t *testing.T) {
+	mockShortener := new(MockShortener)
+	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
+		Return("qwerty12", nil)
+	h := NewShortenerHandler(mockShortener)
+
+	tests := []struct {
+		name         string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Simple positive case",
+			expectedCode: http.StatusCreated,
+			expectedBody: "http://localhost:8080/qwerty12",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/qwerty12",
+				bytes.NewBufferString("https://practicum.yandex.ru/"))
+			req.Header.Set("Content-Type", "text/plain")
+			rr := httptest.NewRecorder()
+
+			h.HandleMainPage()(rr, req)
+			res := rr.Result()
+			defer res.Body.Close()
+			resBody, _ := io.ReadAll(res.Body)
+			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
+			contentType := res.Header.Get("Content-Type")
+			assert.Equal(t, "text/plain", contentType, "Content-Type didn't match expected")
+			assert.Equal(t, tt.expectedBody, string(resBody), "Location didn't match expected")
 		})
 	}
 }
