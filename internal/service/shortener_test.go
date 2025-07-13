@@ -22,15 +22,6 @@ func (m *MockRepository) GetByShortURL(id string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
-type MockRandomGenerator struct {
-	mock.Mock
-}
-
-func (m *MockRandomGenerator) generateRandomString(length int) string {
-	args := m.Called(length)
-	return args.String(0)
-}
-
 func TestGenerateShortURLPart(t *testing.T) {
 	mockPositiveRepo := new(MockRepository)
 	mockPositiveRepo.On("Save", mock.Anything, "https://practicum.yandex.ru/").

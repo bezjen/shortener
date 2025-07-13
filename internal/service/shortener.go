@@ -14,6 +14,11 @@ const (
 
 var GenerateError = errors.New("failed to generate short url")
 
+type Shortener interface {
+	GenerateShortURLPart(url string) (string, error)
+	GetURLByShortURLPart(shortURLPart string) (string, error)
+}
+
 type URLShortener struct {
 	storage repository.Repository
 }
