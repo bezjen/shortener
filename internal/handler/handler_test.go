@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -68,20 +69,39 @@ func TestHandlePostShortURL(t *testing.T) {
 
 	tests := []struct {
 		name         string
+		contentType  string
+		body         string
 		expectedCode int
 		expectedBody string
 	}{
 		{
 			name:         "Simple positive case",
+			contentType:  "text/plain",
+			body:         "https://practicum.yandex.ru/",
 			expectedCode: http.StatusCreated,
 			expectedBody: "http://localhost:8080/qwerty12",
+		},
+		{
+			name:         "Wrong content type",
+			contentType:  "application/json",
+			body:         "https://practicum.yandex.ru/",
+			expectedCode: http.StatusBadRequest,
+			expectedBody: "incorrect content type\n",
+		},
+		{
+			name:         "Incorrect URL",
+			contentType:  "text/plain",
+			body:         "incorrect_URL",
+			expectedCode: http.StatusBadRequest,
+			expectedBody: "failed to parse url\n",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/qwerty12",
-				bytes.NewBufferString("https://practicum.yandex.ru/"))
-			req.Header.Set("Content-Type", "text/plain")
+			req := httptest.NewRequest(http.MethodPost, "/qwerty12", bytes.NewBufferString(tt.body))
+			if tt.contentType != "" {
+				req.Header.Set("Content-Type", tt.contentType)
+			}
 			rr := httptest.NewRecorder()
 
 			h.HandleMainPage()(rr, req)
@@ -90,7 +110,7 @@ func TestHandlePostShortURL(t *testing.T) {
 			resBody, _ := io.ReadAll(res.Body)
 			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
 			contentType := res.Header.Get("Content-Type")
-			assert.Equal(t, "text/plain", contentType, "Content-Type didn't match expected")
+			assert.True(t, strings.HasPrefix(contentType, "text/plain"), "Content-Type didn't match expected")
 			assert.Equal(t, tt.expectedBody, string(resBody), "Location didn't match expected")
 		})
 	}
