@@ -32,31 +32,49 @@ func TestHandleGetShortURL(t *testing.T) {
 	h := NewShortenerHandler(mockShortener)
 
 	tests := []struct {
-		name             string
-		path             string
-		expectedCode     int
-		expectedLocation string
+		name                string
+		path                string
+		expectedContentType string
+		expectedCode        int
+		expectedBody        string
+		expectedLocation    string
 	}{
 		{
-			name:             "Simple positive case",
-			path:             "/qwerty12",
-			expectedCode:     http.StatusTemporaryRedirect,
-			expectedLocation: "https://practicum.yandex.ru/",
+			name:                "Simple positive case",
+			path:                "/qwerty12",
+			expectedCode:        http.StatusTemporaryRedirect,
+			expectedContentType: "text/plain",
+			expectedBody:        "",
+			expectedLocation:    "https://practicum.yandex.ru/",
+		},
+		{
+			name:                "Empty short url",
+			path:                "/",
+			expectedCode:        http.StatusBadRequest,
+			expectedContentType: "",
+			expectedBody:        "short url is empty\n",
+			expectedLocation:    "",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/qwerty12", nil)
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
 			rr := httptest.NewRecorder()
 
 			h.HandleMainPage()(rr, req)
 			res := rr.Result()
 			defer res.Body.Close()
+			resBody, _ := io.ReadAll(res.Body)
 			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
-			contentType := res.Header.Get("Content-Type")
-			assert.Equal(t, "text/plain", contentType, "Content-Type didn't match expected")
-			location := res.Header.Get("Location")
-			assert.Equal(t, tt.expectedLocation, location, "Location didn't match expected")
+			if tt.expectedContentType != "" {
+				contentType := res.Header.Get("Content-Type")
+				assert.Equal(t, "text/plain", contentType, "Content-Type didn't match expected")
+			}
+			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
+			if tt.expectedLocation != "" {
+				location := res.Header.Get("Location")
+				assert.Equal(t, tt.expectedLocation, location, "Location didn't match expected")
+			}
 		})
 	}
 }
@@ -111,7 +129,7 @@ func TestHandlePostShortURL(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
 			contentType := res.Header.Get("Content-Type")
 			assert.True(t, strings.HasPrefix(contentType, "text/plain"), "Content-Type didn't match expected")
-			assert.Equal(t, tt.expectedBody, string(resBody), "Location didn't match expected")
+			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
 		})
 	}
 }
