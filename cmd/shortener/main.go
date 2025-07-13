@@ -10,7 +10,7 @@ import (
 func main() {
 	storage := repository.NewInMemoryRepository()
 	urlShortener := service.NewURLShortener(storage)
-	shortenerHandler := handler.NewShortenerHandler(*urlShortener)
+	shortenerHandler := handler.NewShortenerHandler(urlShortener)
 	http.HandleFunc(`/`, shortenerHandler.HandleMainPage())
 
 	err := http.ListenAndServe(`:8080`, nil)
