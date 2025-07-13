@@ -32,7 +32,7 @@ func (u *URLShortener) GenerateShortURLPart(url string) (string, error) {
 			if errors.Is(err, repository.ErrConflict) {
 				continue
 			}
-			return "", GenerateError
+			return "", err
 		}
 		return shortURL, nil
 	}
