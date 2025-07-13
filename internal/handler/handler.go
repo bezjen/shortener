@@ -44,8 +44,8 @@ func (h *ShortenerHandler) handlePostShortURL(rw http.ResponseWriter, r *http.Re
 		return
 	}
 	bodyString := string(body)
-	_, errValidation := url.ParseRequestURI(bodyString)
-	if errValidation != nil {
+	_, err = url.ParseRequestURI(bodyString)
+	if err != nil {
 		http.Error(rw, "failed to parse url", http.StatusBadRequest)
 		return
 	}
