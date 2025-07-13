@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"net/http"
@@ -27,11 +26,8 @@ func TestHandleGetShortURL(t *testing.T) {
 	mockShortener := new(MockShortener)
 	mockShortener.On("GetURLByShortURLPart", "qwerty12").
 		Return("https://practicum.yandex.ru/", nil)
-	handler := &ShortenerHandler{
-		shortener: mockShortener,
-	}
-	srv := httptest.NewServer(handler.HandleMainPage())
-	defer srv.Close()
+	h := NewShortenerHandler(mockShortener)
+
 	tests := []struct {
 		name             string
 		path             string
@@ -47,13 +43,16 @@ func TestHandleGetShortURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := resty.New().R()
-			resp, err := req.Get(srv.URL + tt.path)
-			assert.NoError(t, err, "error making HTTP request")
-			assert.Equal(t, tt.expectedCode, resp.StatusCode(), "Response code didn't match expected")
-			contentType := resp.Header().Get("Content-Type")
+			req := httptest.NewRequest(http.MethodGet, "/qwerty12", nil)
+			rr := httptest.NewRecorder()
+
+			h.HandleMainPage()(rr, req)
+			res := rr.Result()
+			defer res.Body.Close()
+			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
+			contentType := res.Header.Get("Content-Type")
 			assert.Equal(t, "text/plain", contentType, "Content-Type didn't match expected")
-			location := resp.Header().Get("Location")
+			location := res.Header.Get("Location")
 			assert.Equal(t, tt.expectedLocation, location, "Location didn't match expected")
 		})
 	}
