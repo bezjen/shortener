@@ -23,30 +23,31 @@ func NewURLShortener(storage repository.Repository) *URLShortener {
 }
 
 func (u *URLShortener) GenerateShortURLPart(url string) (string, error) {
-	shortURL := generateShort(u.storage)
-	if shortURL == nil {
-		return "", errors.New("failed to generate short url")
+	shortURL, err := u.generateShort()
+	if err != nil {
+		return "", err
 	}
-	u.storage.Save(*shortURL, url)
-	return *shortURL, nil
+	u.storage.Save(shortURL, url)
+	return shortURL, nil
 }
 
 func (u *URLShortener) GetURLByShortURLPart(shortURLPart string) (string, error) {
-	resultURL := u.storage.GetByShortURL(shortURLPart)
-	if resultURL == "" {
-		return "", errors.New("url not found")
+	resultURL, err := u.storage.GetByShortURL(shortURLPart)
+	if err != nil {
+		return "", err
 	}
 	return resultURL, nil
 }
 
-func generateShort(rep repository.Repository) *string {
+func (u *URLShortener) generateShort() (string, error) {
 	for i := 0; i < maxAttemptsCount; i++ {
 		shortURL := generateRandomString(shortURLLength)
-		if rep.GetByShortURL(shortURL) == "" {
-			return &shortURL
+		_, err := u.storage.GetByShortURL(shortURL)
+		if errors.Is(err, repository.ErrNotFound) {
+			return shortURL, nil
 		}
 	}
-	return nil
+	return "", errors.New("failed to generate short url")
 }
 
 func generateRandomString(length int) string {
