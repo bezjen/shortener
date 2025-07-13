@@ -48,7 +48,7 @@ func TestGenerateShortURLPart(t *testing.T) {
 			storage: mockCollisionRepo,
 			url:     "https://practicum.yandex.ru/",
 			want:    "",
-			wantErr: GenerateError,
+			wantErr: ErrGenerate,
 		},
 	}
 	for _, tt := range tests {

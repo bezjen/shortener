@@ -12,7 +12,7 @@ const (
 	maxAttemptsCount = 10
 )
 
-var GenerateError = errors.New("failed to generate short url")
+var ErrGenerate = errors.New("failed to generate short url")
 
 type Shortener interface {
 	GenerateShortURLPart(url string) (string, error)
@@ -41,7 +41,7 @@ func (u *URLShortener) GenerateShortURLPart(url string) (string, error) {
 		}
 		return shortURL, nil
 	}
-	return "", GenerateError
+	return "", ErrGenerate
 }
 
 func (u *URLShortener) GetURLByShortURLPart(shortURLPart string) (string, error) {

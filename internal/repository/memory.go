@@ -26,9 +26,9 @@ func (m *InMemoryRepository) Save(shortURL string, url string) error {
 func (m *InMemoryRepository) GetByShortURL(shortURL string) (string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	storedUrl, exists := m.storage[shortURL]
+	storedURL, exists := m.storage[shortURL]
 	if !exists {
 		return "", ErrNotFound
 	}
-	return storedUrl, nil
+	return storedURL, nil
 }
