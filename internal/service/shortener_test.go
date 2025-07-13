@@ -56,14 +56,14 @@ func TestGenerateShortURLPart(t *testing.T) {
 			u := &URLShortener{
 				storage: tt.storage,
 			}
-			shortUrl, err := u.GenerateShortURLPart(tt.url)
+			shortURL, err := u.GenerateShortURLPart(tt.url)
 			if err != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)
 				}
 				return
 			}
-			assert.Equal(t, 8, len(shortUrl))
+			assert.Equal(t, 8, len(shortURL))
 		})
 	}
 }
