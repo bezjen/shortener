@@ -44,7 +44,7 @@ func (h *ShortenerHandler) HandlePostShortURL(rw http.ResponseWriter, r *http.Re
 		return
 	}
 
-	resultURL := config.FlagShortURLArrd + "/" + shortURL
+	resultURL := config.FlagShortURLAddr + "/" + shortURL
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusCreated)
 	rw.Write([]byte(resultURL))
