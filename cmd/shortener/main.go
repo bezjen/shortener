@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	config.ParseFlags()
 	storage := repository.NewInMemoryRepository()
 	urlShortener := service.NewURLShortener(storage)
 	shortenerHandler := handler.NewShortenerHandler(urlShortener)

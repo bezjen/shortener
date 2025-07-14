@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"github.com/bezjen/shortener/internal/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -31,6 +32,7 @@ func TestHandleGetShortURL(t *testing.T) {
 	mockShortener := new(MockShortener)
 	mockShortener.On("GetURLByShortURLPart", "qwerty12").
 		Return("https://practicum.yandex.ru/", nil)
+	config.ParseFlags()
 	h := NewShortenerHandler(mockShortener)
 
 	tests := []struct {
@@ -89,6 +91,7 @@ func TestHandlePostShortURL(t *testing.T) {
 	mockShortener := new(MockShortener)
 	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
+	config.ParseFlags()
 	h := NewShortenerHandler(mockShortener)
 
 	tests := []struct {
