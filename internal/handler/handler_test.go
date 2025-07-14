@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -28,11 +29,15 @@ func (m *MockShortener) GetURLByShortURLPart(id string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
+func TestMain(m *testing.M) {
+	config.ParseFlags()
+	os.Exit(m.Run())
+}
+
 func TestHandleGetShortURL(t *testing.T) {
 	mockShortener := new(MockShortener)
 	mockShortener.On("GetURLByShortURLPart", "qwerty12").
 		Return("https://practicum.yandex.ru/", nil)
-	config.ParseFlags()
 	h := NewShortenerHandler(mockShortener)
 
 	tests := []struct {
@@ -91,7 +96,6 @@ func TestHandlePostShortURL(t *testing.T) {
 	mockShortener := new(MockShortener)
 	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
-	config.ParseFlags()
 	h := NewShortenerHandler(mockShortener)
 
 	tests := []struct {
