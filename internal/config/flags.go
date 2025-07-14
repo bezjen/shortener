@@ -2,11 +2,15 @@ package config
 
 import "flag"
 
-var FlagRunAddr string
-var FlagShortURLAddr string
+type Config struct {
+	RunAddr      string
+	ShortURLAddr string
+}
+
+var FlagsConfig Config
 
 func ParseFlags() {
-	flag.StringVar(&FlagRunAddr, "a", ":8080", "port to run server")
-	flag.StringVar(&FlagShortURLAddr, "b", "http://localhost:8080", "address and port of tiny url")
+	flag.StringVar(&FlagsConfig.RunAddr, "a", ":8080", "port to run server")
+	flag.StringVar(&FlagsConfig.ShortURLAddr, "b", "http://localhost:8080", "address and port of tiny url")
 	flag.Parse()
 }
