@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/handler"
 	"github.com/bezjen/shortener/internal/repository"
 	"github.com/bezjen/shortener/internal/service"
@@ -17,7 +18,7 @@ func main() {
 	r.Post("/", shortenerHandler.HandlePostShortURL)
 	r.Get("/{shortURL}", shortenerHandler.HandleGetShortURL)
 
-	err := http.ListenAndServe(":8080", r)
+	err := http.ListenAndServe(config.FlagRunAddr, r)
 	if err != nil {
 		panic(err)
 	}

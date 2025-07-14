@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"io"
@@ -43,7 +44,7 @@ func (h *ShortenerHandler) HandlePostShortURL(rw http.ResponseWriter, r *http.Re
 		return
 	}
 
-	resultURL := "http://localhost:8080/" + shortURL
+	resultURL := config.FlagShortURLArrd + shortURL
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusCreated)
 	rw.Write([]byte(resultURL))
