@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/bezjen/shortener/internal/service"
+	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"net/url"
@@ -18,20 +19,7 @@ func NewShortenerHandler(shortener service.Shortener) *ShortenerHandler {
 	}
 }
 
-func (h *ShortenerHandler) HandleMainPage() http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost:
-			h.handlePostShortURL(rw, r)
-		case http.MethodGet:
-			h.handleGetShortURL(rw, r)
-		default:
-			rw.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	}
-}
-
-func (h *ShortenerHandler) handlePostShortURL(rw http.ResponseWriter, r *http.Request) {
+func (h *ShortenerHandler) HandlePostShortURL(rw http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "text/plain") {
 		http.Error(rw, "incorrect content type", http.StatusBadRequest)
@@ -61,8 +49,8 @@ func (h *ShortenerHandler) handlePostShortURL(rw http.ResponseWriter, r *http.Re
 	rw.Write([]byte(resultURL))
 }
 
-func (h *ShortenerHandler) handleGetShortURL(rw http.ResponseWriter, r *http.Request) {
-	shortURL := r.URL.Path[1:]
+func (h *ShortenerHandler) HandleGetShortURL(rw http.ResponseWriter, r *http.Request) {
+	shortURL := chi.URLParam(r, "shortURL")
 	if shortURL == "" {
 		http.Error(rw, "short url is empty", http.StatusBadRequest)
 		return

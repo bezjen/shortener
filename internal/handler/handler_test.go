@@ -2,6 +2,8 @@ package handler
 
 import (
 	"bytes"
+	"context"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"io"
@@ -41,7 +43,7 @@ func TestHandleGetShortURL(t *testing.T) {
 	}{
 		{
 			name:                "Simple positive case",
-			path:                "/qwerty12",
+			path:                "qwerty12",
 			expectedCode:        http.StatusTemporaryRedirect,
 			expectedContentType: "text/plain",
 			expectedBody:        "",
@@ -49,7 +51,7 @@ func TestHandleGetShortURL(t *testing.T) {
 		},
 		{
 			name:                "Empty short url",
-			path:                "/",
+			path:                "",
 			expectedCode:        http.StatusBadRequest,
 			expectedContentType: "",
 			expectedBody:        "short url is empty\n",
@@ -58,17 +60,21 @@ func TestHandleGetShortURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			req := httptest.NewRequest(http.MethodGet, "/"+tt.path, nil)
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("shortURL", tt.path)
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
 			rr := httptest.NewRecorder()
 
-			h.HandleMainPage()(rr, req)
+			h.HandleGetShortURL(rr, req)
 			res := rr.Result()
 			defer res.Body.Close()
 			resBody, _ := io.ReadAll(res.Body)
 			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
 			if tt.expectedContentType != "" {
 				contentType := res.Header.Get("Content-Type")
-				assert.Equal(t, "text/plain", contentType, "Content-Type didn't match expected")
+				assert.True(t, strings.HasPrefix(contentType, "text/plain"), "Content-Type didn't match expected")
 			}
 			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
 			if tt.expectedLocation != "" {
@@ -122,7 +128,7 @@ func TestHandlePostShortURL(t *testing.T) {
 			}
 			rr := httptest.NewRecorder()
 
-			h.HandleMainPage()(rr, req)
+			h.HandlePostShortURL(rr, req)
 			res := rr.Result()
 			defer res.Body.Close()
 			resBody, _ := io.ReadAll(res.Body)
