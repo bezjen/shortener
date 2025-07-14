@@ -12,10 +12,12 @@ import (
 
 type ShortenerHandler struct {
 	shortener service.Shortener
+	cfg       config.Config
 }
 
-func NewShortenerHandler(shortener service.Shortener) *ShortenerHandler {
+func NewShortenerHandler(cfg config.Config, shortener service.Shortener) *ShortenerHandler {
 	return &ShortenerHandler{
+		cfg:       cfg,
 		shortener: shortener,
 	}
 }
@@ -44,7 +46,7 @@ func (h *ShortenerHandler) HandlePostShortURL(rw http.ResponseWriter, r *http.Re
 		return
 	}
 
-	resultURL := config.FlagsConfig.ShortURLAddr + "/" + shortURL
+	resultURL := h.cfg.ShortURLAddr + "/" + shortURL
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusCreated)
 	rw.Write([]byte(resultURL))

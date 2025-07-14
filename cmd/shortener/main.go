@@ -14,9 +14,10 @@ import (
 
 func main() {
 	config.ParseFlags()
+	cfg := config.FlagsConfig
 	storage := repository.NewInMemoryRepository()
 	urlShortener := service.NewURLShortener(storage)
-	shortenerHandler := handler.NewShortenerHandler(urlShortener)
+	shortenerHandler := handler.NewShortenerHandler(cfg, urlShortener)
 
 	r := chi.NewRouter()
 	r.Post("/", shortenerHandler.HandlePostShortURL)
