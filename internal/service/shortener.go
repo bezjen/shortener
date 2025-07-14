@@ -1,9 +1,10 @@
 package service
 
 import (
+	"crypto/rand"
 	"errors"
 	"github.com/bezjen/shortener/internal/repository"
-	"math/rand"
+	"math/big"
 )
 
 const (
@@ -31,8 +32,11 @@ func NewURLShortener(storage repository.Repository) *URLShortener {
 
 func (u *URLShortener) GenerateShortURLPart(url string) (string, error) {
 	for i := 0; i < maxAttemptsCount; i++ {
-		shortURL := generateRandomString(shortURLLength)
-		err := u.storage.Save(shortURL, url)
+		shortURL, err := generateRandomString(shortURLLength)
+		if err != nil {
+			return "", err
+		}
+		err = u.storage.Save(shortURL, url)
 		if err != nil {
 			if errors.Is(err, repository.ErrConflict) {
 				continue
@@ -52,11 +56,14 @@ func (u *URLShortener) GetURLByShortURLPart(shortURLPart string) (string, error)
 	return resultURL, nil
 }
 
-func generateRandomString(length int) string {
+func generateRandomString(length int) (string, error) {
 	result := make([]byte, length)
 	for i := 0; i < length; i++ {
-		randomNumber := rand.Intn(len(charset))
-		result[i] = charset[randomNumber]
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", err
+		}
+		result[i] = charset[num.Int64()]
 	}
-	return string(result)
+	return string(result), nil
 }
