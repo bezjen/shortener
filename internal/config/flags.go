@@ -6,8 +6,8 @@ import (
 )
 
 type Config struct {
-	RunAddr      string `env:"SERVER_ADDRESS"`
-	ShortURLAddr string `env:"BASE_URL"`
+	RunAddr      string
+	ShortURLAddr string
 }
 
 var FlagsConfig Config
