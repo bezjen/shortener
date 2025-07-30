@@ -20,6 +20,7 @@ func TestParseFlags(t *testing.T) {
 			expectedConfig: Config{
 				ServerAddr: "localhost:8080",
 				BaseURL:    "http://localhost:8080",
+				LogLevel:   "info",
 			},
 		},
 		{
@@ -29,6 +30,7 @@ func TestParseFlags(t *testing.T) {
 			expectedConfig: Config{
 				ServerAddr: "localhost:9090",
 				BaseURL:    "https://shortener",
+				LogLevel:   "info",
 			},
 		},
 		{
@@ -41,6 +43,7 @@ func TestParseFlags(t *testing.T) {
 			expectedConfig: Config{
 				ServerAddr: "shortener:7070",
 				BaseURL:    "https://shortener",
+				LogLevel:   "info",
 			},
 		},
 		{
@@ -52,6 +55,7 @@ func TestParseFlags(t *testing.T) {
 			expectedConfig: Config{
 				ServerAddr: "localhost:6060",
 				BaseURL:    "https://shortener",
+				LogLevel:   "info",
 			},
 		},
 		{
@@ -64,6 +68,29 @@ func TestParseFlags(t *testing.T) {
 			expectedConfig: Config{
 				ServerAddr: "localhost:8080",
 				BaseURL:    "http://localhost",
+				LogLevel:   "info",
+			},
+		},
+		{
+			name: "Env for log level",
+			args: []string{"shortener.exe"},
+			env: map[string]string{
+				"LOG_LEVEL": "fatal",
+			},
+			expectedConfig: Config{
+				ServerAddr: "localhost:8080",
+				BaseURL:    "http://localhost:8080",
+				LogLevel:   "fatal",
+			},
+		},
+		{
+			name: "Flag for log level",
+			args: []string{"shortener.exe", "-l=fatal"},
+			env:  map[string]string{},
+			expectedConfig: Config{
+				ServerAddr: "localhost:8080",
+				BaseURL:    "http://localhost:8080",
+				LogLevel:   "fatal",
 			},
 		},
 	}
@@ -86,6 +113,14 @@ func TestParseFlags(t *testing.T) {
 
 			if AppConfig != tt.expectedConfig {
 				t.Errorf("Expected %+v, got %+v", tt.expectedConfig, AppConfig)
+			}
+
+			for key := range tt.env {
+				err := os.Unsetenv(key)
+				if err != nil {
+					t.Errorf("Failed to unset env, error: %v", err)
+					return
+				}
 			}
 		})
 	}
