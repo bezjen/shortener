@@ -34,6 +34,10 @@ func main() {
 
 	r.Post("/", shortenerHandler.HandlePostShortURLTextPlain)
 	r.Get("/{shortURL}", shortenerHandler.HandleGetShortURLRedirect)
+	r.Route("/api/shorten", func(r chi.Router) {
+		r.Get("/", shortenerHandler.HandleGetShortURLJSON)
+		r.Post("/", shortenerHandler.HandlePostShortURLJSON)
+	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

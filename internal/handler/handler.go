@@ -67,3 +67,11 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 	rw.Header().Set("Location", resultURL)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
 }
+
+func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *http.Request) {
+	// TODO
+}
+
+func (h *ShortenerHandler) HandleGetShortURLJSON(rw http.ResponseWriter, r *http.Request) {
+	// TODO
+}
