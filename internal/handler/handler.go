@@ -39,7 +39,7 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 	bodyString := string(body)
 	_, err = url.ParseRequestURI(bodyString)
 	if err != nil {
-		http.Error(rw, "failed to parse url", http.StatusBadRequest)
+		http.Error(rw, "incorrect url", http.StatusBadRequest)
 		return
 	}
 	shortURL, err := h.shortener.GenerateShortURLPart(bodyString)
@@ -82,14 +82,16 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 		http.Error(rw, "failed to read body", http.StatusInternalServerError)
 		return
 	}
+	bodyString := string(body)
+	print(bodyString)
 	var request model.PostShortURLJSONRequest
 	if err = json.Unmarshal(body, &request); err != nil {
-		http.Error(rw, err.Error(), http.StatusBadRequest)
+		http.Error(rw, "incorrect json", http.StatusBadRequest)
 		return
 	}
 	_, err = url.ParseRequestURI(request.URL)
 	if err != nil {
-		http.Error(rw, "failed to parse url", http.StatusBadRequest)
+		http.Error(rw, "incorrect url", http.StatusBadRequest)
 		return
 	}
 

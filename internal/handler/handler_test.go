@@ -127,7 +127,7 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 			contentType:  "text/plain",
 			body:         "incorrect_URL",
 			expectedCode: http.StatusBadRequest,
-			expectedBody: "failed to parse url\n",
+			expectedBody: "incorrect url\n",
 		},
 	}
 	for _, tt := range tests {
@@ -139,6 +139,69 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 			rr := httptest.NewRecorder()
 
 			h.HandlePostShortURLTextPlain(rr, req)
+			res := rr.Result()
+			defer res.Body.Close()
+			resBody, _ := io.ReadAll(res.Body)
+			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
+			contentType := res.Header.Get("Content-Type")
+			assert.True(t, strings.HasPrefix(contentType, "text/plain"), "Content-Type didn't match expected")
+			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
+		})
+	}
+}
+
+func TestHandlePostShortURLJSON(t *testing.T) {
+	testCfg := testConfig()
+	mockShortener := new(MockShortener)
+	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
+		Return("qwerty12", nil)
+	h := NewShortenerHandler(testCfg, mockShortener)
+
+	tests := []struct {
+		name         string
+		contentType  string
+		body         string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Simple positive case",
+			contentType:  "application/json",
+			body:         `{"url":"https://practicum.yandex.ru/"}`,
+			expectedCode: http.StatusCreated,
+			expectedBody: `{"result":"http://localhost:8080/qwerty12"}`,
+		},
+		{
+			name:         "Wrong content type",
+			contentType:  "text/plain",
+			body:         "https://practicum.yandex.ru/",
+			expectedCode: http.StatusBadRequest,
+			expectedBody: "incorrect content type\n",
+		},
+		{
+			name:         "Incorrect URL",
+			contentType:  "application/json",
+			body:         `incorrect_JSON`,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: "incorrect json\n",
+		},
+		{
+			name:         "Incorrect URL",
+			contentType:  "application/json",
+			body:         `{"url":"incorrect_URL"}`,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: "incorrect url\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/qwerty12", bytes.NewBufferString(tt.body))
+			if tt.contentType != "" {
+				req.Header.Set("Content-Type", tt.contentType)
+			}
+			rr := httptest.NewRecorder()
+
+			h.HandlePostShortURLJSON(rr, req)
 			res := rr.Result()
 			defer res.Body.Close()
 			resBody, _ := io.ReadAll(res.Body)
