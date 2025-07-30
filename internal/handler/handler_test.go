@@ -35,7 +35,7 @@ func testConfig() config.Config {
 	}
 }
 
-func TestHandleGetShortURL(t *testing.T) {
+func TestHandleGetShortURLRedirect(t *testing.T) {
 	testCfg := testConfig()
 	mockShortener := new(MockShortener)
 	mockShortener.On("GetURLByShortURLPart", "qwerty12").
@@ -94,7 +94,7 @@ func TestHandleGetShortURL(t *testing.T) {
 	}
 }
 
-func TestHandlePostShortURL(t *testing.T) {
+func TestHandlePostShortURLTextPlain(t *testing.T) {
 	testCfg := testConfig()
 	mockShortener := new(MockShortener)
 	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
