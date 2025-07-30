@@ -169,28 +169,28 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 			contentType:  "application/json",
 			body:         `{"url":"https://practicum.yandex.ru/"}`,
 			expectedCode: http.StatusCreated,
-			expectedBody: `{"result":"http://localhost:8080/qwerty12"}`,
+			expectedBody: `{"result":"http://localhost:8080/qwerty12"}` + "\n",
 		},
 		{
 			name:         "Wrong content type",
 			contentType:  "text/plain",
 			body:         "https://practicum.yandex.ru/",
 			expectedCode: http.StatusBadRequest,
-			expectedBody: "incorrect content type\n",
+			expectedBody: `{"error":"incorrect content type"}` + "\n",
 		},
 		{
 			name:         "Incorrect URL",
 			contentType:  "application/json",
 			body:         `incorrect_JSON`,
 			expectedCode: http.StatusBadRequest,
-			expectedBody: "incorrect json\n",
+			expectedBody: `{"error":"incorrect json"}` + "\n",
 		},
 		{
 			name:         "Incorrect URL",
 			contentType:  "application/json",
 			body:         `{"url":"incorrect_URL"}`,
 			expectedCode: http.StatusBadRequest,
-			expectedBody: "incorrect url\n",
+			expectedBody: `{"error":"incorrect url"}` + "\n",
 		},
 	}
 	for _, tt := range tests {
@@ -207,7 +207,7 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 			resBody, _ := io.ReadAll(res.Body)
 			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
 			contentType := res.Header.Get("Content-Type")
-			assert.True(t, strings.HasPrefix(contentType, "text/plain"), "Content-Type didn't match expected")
+			assert.True(t, strings.HasPrefix(contentType, "application/json"), "Content-Type didn't match expected")
 			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
 		})
 	}

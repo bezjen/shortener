@@ -5,5 +5,6 @@ type PostShortURLJSONRequest struct {
 }
 
 type PostShortURLJSONResponse struct {
-	ShortURL string `json:"result"`
+	ShortURL string `json:"result,omitempty"`
+	Error    string `json:"error,omitempty"`
 }

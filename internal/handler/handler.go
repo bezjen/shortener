@@ -71,43 +71,50 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 }
 
 func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *http.Request) {
+	var result model.PostShortURLJSONResponse
 	contentType := r.Header.Get("Content-Type")
+	rw.Header().Set("Content-Type", "application/json")
 	if !strings.HasPrefix(contentType, "application/json") {
-		http.Error(rw, "incorrect content type", http.StatusBadRequest)
+		result.Error = "incorrect content type"
+		rw.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(rw).Encode(result)
 		return
 	}
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(rw, "failed to read body", http.StatusInternalServerError)
+		result.Error = "failed to read body"
+		rw.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(rw).Encode(result)
 		return
 	}
-	bodyString := string(body)
-	print(bodyString)
 	var request model.PostShortURLJSONRequest
 	if err = json.Unmarshal(body, &request); err != nil {
-		http.Error(rw, "incorrect json", http.StatusBadRequest)
+		result.Error = "incorrect json"
+		rw.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(rw).Encode(result)
 		return
 	}
 	_, err = url.ParseRequestURI(request.URL)
 	if err != nil {
-		http.Error(rw, "incorrect url", http.StatusBadRequest)
+		result.Error = "incorrect url"
+		rw.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(rw).Encode(result)
 		return
 	}
 
 	shortURL, err := h.shortener.GenerateShortURLPart(request.URL)
 	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		result.Error = err.Error()
+		rw.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(rw).Encode(result)
 		return
 	}
 
-	result := model.PostShortURLJSONResponse{
-		ShortURL: h.cfg.BaseURL + "/" + shortURL,
-	}
+	result.ShortURL = h.cfg.BaseURL + "/" + shortURL
 	rw.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(rw).Encode(result)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
 	}
 }
