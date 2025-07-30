@@ -71,7 +71,3 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *http.Request) {
 	// TODO
 }
-
-func (h *ShortenerHandler) HandleGetShortURLJSON(rw http.ResponseWriter, r *http.Request) {
-	// TODO
-}
