@@ -22,7 +22,7 @@ func NewShortenerHandler(cfg config.Config, shortener service.Shortener) *Shorte
 	}
 }
 
-func (h *ShortenerHandler) HandlePostShortURL(rw http.ResponseWriter, r *http.Request) {
+func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "text/plain") {
 		http.Error(rw, "incorrect content type", http.StatusBadRequest)
@@ -52,7 +52,7 @@ func (h *ShortenerHandler) HandlePostShortURL(rw http.ResponseWriter, r *http.Re
 	rw.Write([]byte(resultURL))
 }
 
-func (h *ShortenerHandler) HandleGetShortURL(rw http.ResponseWriter, r *http.Request) {
+func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "shortURL")
 	if shortURL == "" {
 		http.Error(rw, "short url is empty", http.StatusBadRequest)

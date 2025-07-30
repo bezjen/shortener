@@ -76,7 +76,7 @@ func TestHandleGetShortURL(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			h.HandleGetShortURL(rr, req)
+			h.HandleGetShortURLRedirect(rr, req)
 			res := rr.Result()
 			defer res.Body.Close()
 			resBody, _ := io.ReadAll(res.Body)
@@ -138,7 +138,7 @@ func TestHandlePostShortURL(t *testing.T) {
 			}
 			rr := httptest.NewRecorder()
 
-			h.HandlePostShortURL(rr, req)
+			h.HandlePostShortURLTextPlain(rr, req)
 			res := rr.Result()
 			defer res.Body.Close()
 			resBody, _ := io.ReadAll(res.Body)

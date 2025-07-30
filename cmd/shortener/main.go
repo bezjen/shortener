@@ -32,8 +32,8 @@ func main() {
 
 	r.Use(middleware.WithLogging)
 
-	r.Post("/", shortenerHandler.HandlePostShortURL)
-	r.Get("/{shortURL}", shortenerHandler.HandleGetShortURL)
+	r.Post("/", shortenerHandler.HandlePostShortURLTextPlain)
+	r.Get("/{shortURL}", shortenerHandler.HandleGetShortURLRedirect)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
