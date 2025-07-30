@@ -71,51 +71,44 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 }
 
 func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *http.Request) {
-	var response model.PostShortURLJSONResponse
 	rw.Header().Set("Content-Type", "application/json")
 
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		response.Error = "incorrect content type"
-		rw.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(rw).Encode(response); err != nil {
-			http.Error(rw, err.Error(), http.StatusInternalServerError)
-		}
+		writeJSONErrorResponse(rw, http.StatusBadRequest, "incorrect content type")
 		return
 	}
-
 	defer r.Body.Close()
 	var request model.PostShortURLJSONRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		response.Error = "incorrect json"
-		rw.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(rw).Encode(response); err != nil {
-			http.Error(rw, err.Error(), http.StatusBadRequest)
-		}
+		writeJSONErrorResponse(rw, http.StatusBadRequest, "incorrect json")
 		return
 	}
-
 	if _, err := url.ParseRequestURI(request.URL); err != nil {
-		response.Error = "incorrect url"
-		rw.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(rw).Encode(response); err != nil {
-			http.Error(rw, err.Error(), http.StatusBadRequest)
-		}
+		writeJSONErrorResponse(rw, http.StatusBadRequest, "incorrect url")
 		return
 	}
-
 	shortURL, err := h.shortener.GenerateShortURLPart(request.URL)
 	if err != nil {
-		response.Error = err.Error()
-		rw.WriteHeader(http.StatusInternalServerError)
-		if err := json.NewEncoder(rw).Encode(response); err != nil {
-			http.Error(rw, err.Error(), http.StatusInternalServerError)
-		}
+		writeJSONErrorResponse(rw, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	response.ShortURL = h.cfg.BaseURL + "/" + shortURL
-	rw.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(rw).Encode(response); err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
+	fullShortURL := h.cfg.BaseURL + "/" + shortURL
+	writeJSONSuccessResponse(rw, http.StatusCreated, fullShortURL)
+}
+
+func writeJSONSuccessResponse(rw http.ResponseWriter, statusCode int, shortURL string) {
+	writeJSONResponse(rw, statusCode, model.PostShortURLJSONResponse{ShortURL: shortURL})
+}
+
+func writeJSONErrorResponse(rw http.ResponseWriter, statusCode int, error string) {
+	writeJSONResponse(rw, statusCode, model.PostShortURLJSONResponse{Error: error})
+}
+
+func writeJSONResponse(rw http.ResponseWriter, statusCode int, response model.PostShortURLJSONResponse) {
+	rw.WriteHeader(statusCode)
+	err := json.NewEncoder(rw).Encode(response)
+	if err != nil {
+		http.Error(rw, "failed to encode error response", http.StatusInternalServerError)
 	}
 }
