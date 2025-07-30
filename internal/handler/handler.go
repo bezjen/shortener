@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"encoding/json"
 	"github.com/bezjen/shortener/internal/config"
+	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"io"
@@ -69,5 +71,42 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 }
 
 func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *http.Request) {
-	// TODO
+	contentType := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "application/json") {
+		http.Error(rw, "incorrect content type", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(rw, "failed to read body", http.StatusInternalServerError)
+		return
+	}
+	var request model.PostShortURLJSONRequest
+	if err = json.Unmarshal(body, &request); err != nil {
+		http.Error(rw, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, err = url.ParseRequestURI(request.URL)
+	if err != nil {
+		http.Error(rw, "failed to parse url", http.StatusBadRequest)
+		return
+	}
+	shortURL, err := h.shortener.GenerateShortURLPart(request.URL)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	result := model.PostShortURLJSONResponse{
+		ShortURL: h.cfg.BaseURL + "/" + shortURL,
+	}
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+	marshalled, err := json.Marshal(result)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	rw.Write(marshalled)
 }
