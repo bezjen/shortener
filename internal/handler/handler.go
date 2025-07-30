@@ -92,6 +92,7 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 		http.Error(rw, "failed to parse url", http.StatusBadRequest)
 		return
 	}
+
 	shortURL, err := h.shortener.GenerateShortURLPart(request.URL)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
@@ -101,12 +102,10 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 	result := model.PostShortURLJSONResponse{
 		ShortURL: h.cfg.BaseURL + "/" + shortURL,
 	}
-	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
-	marshalled, err := json.Marshal(result)
+	err = json.NewEncoder(rw).Encode(result)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	rw.Write(marshalled)
 }
