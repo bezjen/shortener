@@ -13,8 +13,8 @@ import (
 )
 
 func main() {
-	config.ParseFlags()
-	cfg := config.FlagsConfig
+	config.ParseConfig()
+	cfg := config.AppConfig
 	storage := repository.NewInMemoryRepository()
 	urlShortener := service.NewURLShortener(storage)
 	shortenerHandler := handler.NewShortenerHandler(cfg, urlShortener)
@@ -27,7 +27,7 @@ func main() {
 	defer cancel()
 
 	go func() {
-		if err := http.ListenAndServe(config.FlagsConfig.RunAddr, r); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := http.ListenAndServe(cfg.ServerAddr, r); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("Server failed to start: %v", err)
 			cancel()
 		}

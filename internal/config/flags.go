@@ -6,24 +6,27 @@ import (
 )
 
 type Config struct {
-	RunAddr      string
-	ShortURLAddr string
+	ServerAddr string
+	BaseURL    string
 }
 
-var FlagsConfig Config
+var AppConfig Config
 
-func ParseFlags() {
+func ParseConfig() {
+	flagServerAddr := flag.String("a", "localhost:8080", "port to run server")
+	flagBaseURL := flag.String("b", "http://localhost:8080", "address and port of tiny url")
+	flag.Parse()
+
 	addr, addrExists := os.LookupEnv("SERVER_ADDRESS")
 	if addrExists {
-		FlagsConfig.RunAddr = addr
+		AppConfig.ServerAddr = addr
 	} else {
-		flag.StringVar(&FlagsConfig.RunAddr, "a", ":8080", "port to run server")
+		AppConfig.ServerAddr = *flagServerAddr
 	}
 	baseURL, baseURLExists := os.LookupEnv("BASE_URL")
 	if baseURLExists {
-		FlagsConfig.ShortURLAddr = baseURL
+		AppConfig.BaseURL = baseURL
 	} else {
-		flag.StringVar(&FlagsConfig.ShortURLAddr, "b", "http://localhost:8080", "address and port of tiny url")
+		AppConfig.BaseURL = *flagBaseURL
 	}
-	flag.Parse()
 }
