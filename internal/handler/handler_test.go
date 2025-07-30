@@ -30,7 +30,7 @@ func (m *MockShortener) GetURLByShortURLPart(id string) (string, error) {
 
 func testConfig() config.Config {
 	return config.Config{
-		ServerAddr: ":8080",
+		ServerAddr: "localhost:8080",
 		BaseURL:    "http://localhost:8080",
 	}
 }
