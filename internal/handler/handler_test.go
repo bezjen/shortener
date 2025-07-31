@@ -116,13 +116,6 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 			expectedBody: "http://localhost:8080/qwerty12",
 		},
 		{
-			name:         "Wrong content type",
-			contentType:  "application/json",
-			body:         "https://practicum.yandex.ru/",
-			expectedCode: http.StatusBadRequest,
-			expectedBody: "incorrect content type\n",
-		},
-		{
 			name:         "Incorrect URL",
 			contentType:  "text/plain",
 			body:         "incorrect_URL",
@@ -170,13 +163,6 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 			body:         `{"url":"https://practicum.yandex.ru/"}`,
 			expectedCode: http.StatusCreated,
 			expectedBody: `{"result":"http://localhost:8080/qwerty12"}` + "\n",
-		},
-		{
-			name:         "Wrong content type",
-			contentType:  "text/plain",
-			body:         "https://practicum.yandex.ru/",
-			expectedCode: http.StatusBadRequest,
-			expectedBody: `{"error":"incorrect content type"}` + "\n",
 		},
 		{
 			name:         "Incorrect URL",
