@@ -30,8 +30,10 @@ func main() {
 
 	r := chi.NewRouter()
 
-	r.Use(middleware.WithLogging)
-	r.Use(middleware.WithGzipCompression)
+	r.Use(
+		middleware.WithLogging,
+		middleware.WithGzipRequestDecompression,
+		middleware.WithGzipResponseCompression)
 
 	r.Post("/", shortenerHandler.HandlePostShortURLTextPlain)
 	r.Get("/{shortURL}", shortenerHandler.HandleGetShortURLRedirect)
