@@ -27,8 +27,18 @@ func TestWithGzipRequestDecompression(t *testing.T) {
 		compress      bool
 		expectedError bool
 	}{
-		{"normal request", "plain text", false, false},
-		{"gzipped request", "compressed text", true, false},
+		{
+			name:          "normal request",
+			content:       "plain text",
+			compress:      false,
+			expectedError: false,
+		},
+		{
+			name:          "gzipped request",
+			content:       "compressed text",
+			compress:      true,
+			expectedError: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -66,8 +76,16 @@ func TestWithGzipResponseCompression(t *testing.T) {
 		acceptEncoding   string
 		expectCompressed bool
 	}{
-		{"accepts gzip", "gzip", true},
-		{"no gzip", "", false},
+		{
+			name:             "accepts gzip",
+			acceptEncoding:   "gzip",
+			expectCompressed: true,
+		},
+		{
+			name:             "no gzip",
+			acceptEncoding:   "",
+			expectCompressed: false,
+		},
 	}
 
 	for _, tt := range tests {
