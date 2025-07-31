@@ -2,6 +2,7 @@ package compress
 
 import (
 	"compress/gzip"
+	"io"
 	"net/http"
 )
 
@@ -34,4 +35,31 @@ func (w GzipWriter) WriteHeader(statusCode int) {
 
 func (w GzipWriter) Close() error {
 	return w.gw.Close()
+}
+
+type GzipReader struct {
+	rc io.ReadCloser
+	gr *gzip.Reader
+}
+
+func NewGzipReader(r io.ReadCloser) (*GzipReader, error) {
+	gr, err := gzip.NewReader(r)
+	if err != nil {
+		return nil, err
+	}
+	return &GzipReader{
+		rc: r,
+		gr: gr,
+	}, nil
+}
+
+func (r GzipReader) Read(p []byte) (n int, err error) {
+	return r.rc.Read(p)
+}
+
+func (r GzipReader) Close() error {
+	if err := r.rc.Close(); err != nil {
+		return err
+	}
+	return r.gr.Close()
 }

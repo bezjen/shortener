@@ -39,15 +39,33 @@ func WithLogging(h http.Handler) http.Handler {
 func WithGzipCompression(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
-			// TODO: decompress
+			gr, err := compress.NewGzipReader(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			defer func(gr *compress.GzipReader) {
+				err := gr.Close()
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+			}(gr)
+			r.Body = gr
 		}
+		rw := w
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			gw := compress.NewGzipWriter(w)
-			defer gw.Close()
-			h.ServeHTTP(gw, r)
-			return
+			defer func(gw *compress.GzipWriter) {
+				err := gw.Close()
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+			}(gw)
+			rw = gw
 		}
-		h.ServeHTTP(w, r)
+		h.ServeHTTP(rw, r)
 	})
 }
 
