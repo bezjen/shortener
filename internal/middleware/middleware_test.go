@@ -74,16 +74,25 @@ func TestWithGzipResponseCompression(t *testing.T) {
 	tests := []struct {
 		name             string
 		acceptEncoding   string
+		contentType      string
 		expectCompressed bool
 	}{
 		{
 			name:             "accepts gzip",
 			acceptEncoding:   "gzip",
+			contentType:      "text/plain",
 			expectCompressed: true,
 		},
 		{
 			name:             "no gzip",
 			acceptEncoding:   "",
+			contentType:      "text/plain",
+			expectCompressed: false,
+		},
+		{
+			name:             "accepts gzip",
+			acceptEncoding:   "gzip",
+			contentType:      "image/jpeg",
 			expectCompressed: false,
 		},
 	}
@@ -96,6 +105,7 @@ func TestWithGzipResponseCompression(t *testing.T) {
 			}
 
 			rec := httptest.NewRecorder()
+			rec.Header().Set("Content-Type", tt.contentType)
 			handler := &mockHandler{statusCode: http.StatusOK, response: "response"}
 			wrapped := WithGzipResponseCompression(handler)
 
