@@ -18,9 +18,10 @@ func TestParseFlags(t *testing.T) {
 			args: []string{"shortener.exe"},
 			env:  map[string]string{},
 			expectedConfig: Config{
-				ServerAddr: "localhost:8080",
-				BaseURL:    "http://localhost:8080",
-				LogLevel:   "info",
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "./storage.json",
 			},
 		},
 		{
@@ -28,9 +29,10 @@ func TestParseFlags(t *testing.T) {
 			args: []string{"shortener.exe", "-a=localhost:9090", "-b=https://shortener"},
 			env:  map[string]string{},
 			expectedConfig: Config{
-				ServerAddr: "localhost:9090",
-				BaseURL:    "https://shortener",
-				LogLevel:   "info",
+				ServerAddr:      "localhost:9090",
+				BaseURL:         "https://shortener",
+				LogLevel:        "info",
+				FileStoragePath: "./storage.json",
 			},
 		},
 		{
@@ -41,9 +43,10 @@ func TestParseFlags(t *testing.T) {
 				"BASE_URL":       "https://shortener",
 			},
 			expectedConfig: Config{
-				ServerAddr: "shortener:7070",
-				BaseURL:    "https://shortener",
-				LogLevel:   "info",
+				ServerAddr:      "shortener:7070",
+				BaseURL:         "https://shortener",
+				LogLevel:        "info",
+				FileStoragePath: "./storage.json",
 			},
 		},
 		{
@@ -53,9 +56,10 @@ func TestParseFlags(t *testing.T) {
 				"SERVER_ADDRESS": "localhost:6060",
 			},
 			expectedConfig: Config{
-				ServerAddr: "localhost:6060",
-				BaseURL:    "https://shortener",
-				LogLevel:   "info",
+				ServerAddr:      "localhost:6060",
+				BaseURL:         "https://shortener",
+				LogLevel:        "info",
+				FileStoragePath: "./storage.json",
 			},
 		},
 		{
@@ -66,9 +70,10 @@ func TestParseFlags(t *testing.T) {
 				"BASE_URL":       "http://localhost",
 			},
 			expectedConfig: Config{
-				ServerAddr: "localhost:8080",
-				BaseURL:    "http://localhost",
-				LogLevel:   "info",
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost",
+				LogLevel:        "info",
+				FileStoragePath: "./storage.json",
 			},
 		},
 		{
@@ -78,9 +83,10 @@ func TestParseFlags(t *testing.T) {
 				"LOG_LEVEL": "fatal",
 			},
 			expectedConfig: Config{
-				ServerAddr: "localhost:8080",
-				BaseURL:    "http://localhost:8080",
-				LogLevel:   "fatal",
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "fatal",
+				FileStoragePath: "./storage.json",
 			},
 		},
 		{
@@ -88,9 +94,34 @@ func TestParseFlags(t *testing.T) {
 			args: []string{"shortener.exe", "-l=fatal"},
 			env:  map[string]string{},
 			expectedConfig: Config{
-				ServerAddr: "localhost:8080",
-				BaseURL:    "http://localhost:8080",
-				LogLevel:   "fatal",
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "fatal",
+				FileStoragePath: "./storage.json",
+			},
+		},
+		{
+			name: "Env for file storage",
+			args: []string{"shortener.exe"},
+			env: map[string]string{
+				"FILE_STORAGE_PATH": "./storage_new.json",
+			},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "./storage_new.json",
+			},
+		},
+		{
+			name: "Flag for file storage",
+			args: []string{"shortener.exe", "-f=./storage_new.json"},
+			env:  map[string]string{},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "./storage_new.json",
 			},
 		},
 	}
