@@ -54,7 +54,7 @@ func NewGzipReader(r io.ReadCloser) (*GzipReader, error) {
 }
 
 func (r GzipReader) Read(p []byte) (n int, err error) {
-	return r.rc.Read(p)
+	return r.gr.Read(p)
 }
 
 func (r GzipReader) Close() error {
