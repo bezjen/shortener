@@ -66,7 +66,7 @@ func (f *FileRepository) saveShortURLDtoToStorage(shortURL string, originalURL s
 		return nil, err
 	}
 	shortURLDto := model.ShortURLDto{
-		Id:          id,
+		ID:          id,
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
 	}
