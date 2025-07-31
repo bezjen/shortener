@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"github.com/bezjen/shortener/internal/compress"
 	"github.com/bezjen/shortener/internal/logger"
 	"go.uber.org/zap"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -31,6 +33,21 @@ func WithLogging(h http.Handler) http.Handler {
 			zap.Int("status", responseData.status),
 			zap.Int("size", responseData.size),
 		)
+	})
+}
+
+func WithGzipCompression(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+			// TODO: decompress
+		}
+		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			gw := compress.NewGzipWriter(w)
+			defer gw.Close()
+			h.ServeHTTP(gw, r)
+			return
+		}
+		h.ServeHTTP(w, r)
 	})
 }
 
