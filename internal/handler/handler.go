@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 type ShortenerHandler struct {
@@ -25,11 +24,7 @@ func NewShortenerHandler(cfg config.Config, shortener service.Shortener) *Shorte
 }
 
 func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r *http.Request) {
-	contentType := r.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "text/plain") {
-		http.Error(rw, "incorrect content type", http.StatusBadRequest)
-		return
-	}
+
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -73,10 +68,6 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeJSONErrorResponse(rw, http.StatusBadRequest, "incorrect content type")
-		return
-	}
 	defer r.Body.Close()
 	var request model.PostShortURLJSONRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
