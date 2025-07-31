@@ -52,7 +52,7 @@ func TestWithGzipRequestDecompression(t *testing.T) {
 				body = &buf
 			}
 
-			req := httptest.NewRequest("POST", "http://example.com", body)
+			req := httptest.NewRequest("POST", "http://localhost:8080", body)
 			if tt.compress {
 				req.Header.Set("Content-Encoding", "gzip")
 			}
@@ -90,7 +90,7 @@ func TestWithGzipResponseCompression(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "http://example.com", nil)
+			req := httptest.NewRequest("GET", "http://localhost:8080", nil)
 			if tt.acceptEncoding != "" {
 				req.Header.Set("Accept-Encoding", tt.acceptEncoding)
 			}
@@ -105,7 +105,6 @@ func TestWithGzipResponseCompression(t *testing.T) {
 				if rec.Header().Get("Content-Encoding") != "gzip" {
 					t.Error("response should be gzipped")
 				}
-				// Проверяем, что содержимое действительно сжато
 				gr, err := gzip.NewReader(rec.Body)
 				if err != nil {
 					t.Fatal("failed to create gzip reader")

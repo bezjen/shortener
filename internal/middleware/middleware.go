@@ -62,11 +62,6 @@ func WithGzipRequestDecompression(h http.Handler) http.Handler {
 
 func WithGzipResponseCompression(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		contentType := w.Header().Get("Content-Type")
-		if !(contentType == "application/json" || contentType == "text/html") {
-			h.ServeHTTP(w, r)
-			return
-		}
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			h.ServeHTTP(w, r)
 			return
