@@ -24,7 +24,11 @@ func main() {
 		return
 	}
 
-	storage := repository.NewInMemoryRepository()
+	storage, err := repository.NewFileRepository(cfg)
+	if err != nil {
+		log.Printf("Error during storage initialization: %v", err)
+		return
+	}
 	urlShortener := service.NewURLShortener(storage)
 	shortenerHandler := handler.NewShortenerHandler(cfg, urlShortener)
 
