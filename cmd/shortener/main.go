@@ -6,10 +6,9 @@ import (
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/handler"
 	"github.com/bezjen/shortener/internal/logger"
-	"github.com/bezjen/shortener/internal/middleware"
 	"github.com/bezjen/shortener/internal/repository"
+	"github.com/bezjen/shortener/internal/router"
 	"github.com/bezjen/shortener/internal/service"
-	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
 )
@@ -31,23 +30,13 @@ func main() {
 	}
 	urlShortener := service.NewURLShortener(storage)
 	shortenerHandler := handler.NewShortenerHandler(cfg, urlShortener)
-
-	r := chi.NewRouter()
-
-	r.Use(
-		middleware.WithLogging,
-		middleware.WithGzipRequestDecompression,
-		middleware.WithGzipResponseCompression)
-
-	r.Post("/", shortenerHandler.HandlePostShortURLTextPlain)
-	r.Get("/{shortURL}", shortenerHandler.HandleGetShortURLRedirect)
-	r.Post("/api/shorten", shortenerHandler.HandlePostShortURLJSON)
+	shortenerRouter := router.Initialize(*shortenerHandler)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
-		if err := http.ListenAndServe(cfg.ServerAddr, r); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := http.ListenAndServe(cfg.ServerAddr, shortenerRouter); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("Server failed to start: %v", err)
 			cancel()
 		}
