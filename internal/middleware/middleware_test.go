@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"github.com/bezjen/shortener/internal/logger"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -40,6 +41,8 @@ func TestWithGzipRequestDecompression(t *testing.T) {
 			expectedError: false,
 		},
 	}
+	testLogger, _ := logger.NewLogger("debug")
+	m := NewMiddleware(testLogger)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -59,7 +62,7 @@ func TestWithGzipRequestDecompression(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 			handler := &mockHandler{statusCode: http.StatusOK, response: "response"}
-			wrapped := WithGzipRequestDecompression(handler)
+			wrapped := m.WithGzipRequestDecompression(handler)
 
 			wrapped.ServeHTTP(rec, req)
 
@@ -87,6 +90,8 @@ func TestWithGzipResponseCompression(t *testing.T) {
 			expectCompressed: false,
 		},
 	}
+	testLogger, _ := logger.NewLogger("debug")
+	m := NewMiddleware(testLogger)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -97,7 +102,7 @@ func TestWithGzipResponseCompression(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 			handler := &mockHandler{statusCode: http.StatusOK, response: "response"}
-			wrapped := WithGzipResponseCompression(handler)
+			wrapped := m.WithGzipResponseCompression(handler)
 
 			wrapped.ServeHTTP(rec, req)
 

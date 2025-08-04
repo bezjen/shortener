@@ -4,19 +4,20 @@ import (
 	"go.uber.org/zap"
 )
 
-var Log zap.SugaredLogger
+type Logger struct {
+	*zap.SugaredLogger
+}
 
-func Initialize(level string) error {
+func NewLogger(level string) (*Logger, error) {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	cfg := zap.NewProductionConfig()
 	cfg.Level = lvl
 	zl, err := cfg.Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	Log = *zl.Sugar()
-	return nil
+	return &Logger{zl.Sugar()}, nil
 }

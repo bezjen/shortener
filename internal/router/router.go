@@ -2,17 +2,19 @@ package router
 
 import (
 	"github.com/bezjen/shortener/internal/handler"
+	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/middleware"
 	"github.com/go-chi/chi/v5"
 )
 
-func NewRouter(shortenerHandler handler.ShortenerHandler) *chi.Mux {
+func NewRouter(logger *logger.Logger, shortenerHandler handler.ShortenerHandler) *chi.Mux {
 	r := chi.NewRouter()
+	m := middleware.NewMiddleware(logger)
 
 	r.Use(
-		middleware.WithLogging,
-		middleware.WithGzipRequestDecompression,
-		middleware.WithGzipResponseCompression)
+		m.WithLogging,
+		m.WithGzipRequestDecompression,
+		m.WithGzipResponseCompression)
 
 	r.Post("/", shortenerHandler.HandlePostShortURLTextPlain)
 	r.Get("/{shortURL}", shortenerHandler.HandleGetShortURLRedirect)

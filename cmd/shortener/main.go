@@ -17,7 +17,7 @@ func main() {
 	config.ParseConfig()
 	cfg := config.AppConfig
 
-	err := logger.Initialize(cfg.LogLevel)
+	shortenerLogger, err := logger.NewLogger(cfg.LogLevel)
 	if err != nil {
 		log.Printf("Error during logger initialization: %v", err)
 		return
@@ -29,8 +29,8 @@ func main() {
 		return
 	}
 	urlShortener := service.NewURLShortener(storage)
-	shortenerHandler := handler.NewShortenerHandler(cfg, urlShortener)
-	shortenerRouter := router.NewRouter(*shortenerHandler)
+	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener)
+	shortenerRouter := router.NewRouter(shortenerLogger, *shortenerHandler)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

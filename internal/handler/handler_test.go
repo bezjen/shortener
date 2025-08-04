@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/bezjen/shortener/internal/config"
+	"github.com/bezjen/shortener/internal/logger"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -39,10 +40,11 @@ func testConfig() config.Config {
 
 func TestHandleGetShortURLRedirect(t *testing.T) {
 	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(MockShortener)
 	mockShortener.On("GetURLByShortURLPart", "qwerty12").
 		Return("https://practicum.yandex.ru/", nil)
-	h := NewShortenerHandler(testCfg, mockShortener)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
 	tests := []struct {
 		name                string
@@ -98,10 +100,11 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 
 func TestHandlePostShortURLTextPlain(t *testing.T) {
 	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(MockShortener)
 	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
-	h := NewShortenerHandler(testCfg, mockShortener)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
 	tests := []struct {
 		name         string
@@ -147,10 +150,11 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 
 func TestHandlePostShortURLJSON(t *testing.T) {
 	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(MockShortener)
 	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
-	h := NewShortenerHandler(testCfg, mockShortener)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
 	tests := []struct {
 		name         string

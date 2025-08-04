@@ -9,7 +9,15 @@ import (
 	"time"
 )
 
-func WithLogging(h http.Handler) http.Handler {
+type Middleware struct {
+	logger *logger.Logger
+}
+
+func NewMiddleware(logger *logger.Logger) *Middleware {
+	return &Middleware{logger: logger}
+}
+
+func (m *Middleware) WithLogging(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		uri := r.RequestURI
@@ -26,7 +34,7 @@ func WithLogging(h http.Handler) http.Handler {
 		h.ServeHTTP(&lw, r)
 
 		duration := time.Since(start)
-		logger.Log.Infoln("got incoming HTTP request",
+		m.logger.Infoln("got incoming HTTP request",
 			zap.String("URI", uri),
 			zap.String("method", method),
 			zap.String("duration", duration.String()),
@@ -36,7 +44,7 @@ func WithLogging(h http.Handler) http.Handler {
 	})
 }
 
-func WithGzipRequestDecompression(h http.Handler) http.Handler {
+func (m *Middleware) WithGzipRequestDecompression(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
 			h.ServeHTTP(w, r)
@@ -45,14 +53,14 @@ func WithGzipRequestDecompression(h http.Handler) http.Handler {
 
 		gr, err := compress.NewGzipReader(r.Body)
 		if err != nil {
-			logger.Log.Error("Failed to decompress request body", zap.Error(err))
+			m.logger.Error("Failed to decompress request body", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		defer func(gr *compress.GzipReader) {
 			err := gr.Close()
 			if err != nil {
-				logger.Log.Error("Failed to close gzip reader", zap.Error(err))
+				m.logger.Error("Failed to close gzip reader", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -62,7 +70,7 @@ func WithGzipRequestDecompression(h http.Handler) http.Handler {
 	})
 }
 
-func WithGzipResponseCompression(h http.Handler) http.Handler {
+func (m *Middleware) WithGzipResponseCompression(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			h.ServeHTTP(w, r)
@@ -73,7 +81,7 @@ func WithGzipResponseCompression(h http.Handler) http.Handler {
 		defer func(gw *compress.GzipWriter) {
 			err := gw.Close()
 			if err != nil {
-				logger.Log.Error("Failed to close gzip writer", zap.Error(err))
+				m.logger.Error("Failed to close gzip writer", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
