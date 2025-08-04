@@ -45,12 +45,14 @@ func WithGzipRequestDecompression(h http.Handler) http.Handler {
 
 		gr, err := compress.NewGzipReader(r.Body)
 		if err != nil {
+			logger.Log.Error("Failed to decompress request body", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		defer func(gr *compress.GzipReader) {
 			err := gr.Close()
 			if err != nil {
+				logger.Log.Error("Failed to close gzip reader", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -71,6 +73,7 @@ func WithGzipResponseCompression(h http.Handler) http.Handler {
 		defer func(gw *compress.GzipWriter) {
 			err := gw.Close()
 			if err != nil {
+				logger.Log.Error("Failed to close gzip writer", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
