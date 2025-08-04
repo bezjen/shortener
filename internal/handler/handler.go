@@ -3,9 +3,11 @@ package handler
 import (
 	"encoding/json"
 	"github.com/bezjen/shortener/internal/config"
+	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/service"
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/url"
@@ -28,7 +30,8 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(rw, "failed to read body", http.StatusInternalServerError)
+		logger.Log.Error("Failed to read body", zap.Error(err))
+		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	bodyString := string(body)
@@ -39,7 +42,11 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 	}
 	shortURL, err := h.shortener.GenerateShortURLPart(bodyString)
 	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		logger.Log.Error("Failed to generate short URL",
+			zap.Error(err),
+			zap.String("bodyString", bodyString),
+		)
+		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -57,7 +64,11 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 	}
 	resultURL, err := h.shortener.GetURLByShortURLPart(shortURL)
 	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		logger.Log.Error("Failed to get url by short url",
+			zap.Error(err),
+			zap.String("shortURL", shortURL),
+		)
+		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	rw.Header().Set("Content-Type", "text/plain")
@@ -80,13 +91,22 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 	}
 	shortURL, err := h.shortener.GenerateShortURLPart(request.URL)
 	if err != nil {
-		writeJSONErrorResponse(rw, http.StatusInternalServerError, err.Error())
+		logger.Log.Error("Failed to generate short URL",
+			zap.Error(err),
+			zap.String("originalURL", request.URL),
+		)
+		writeJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 
 	fullShortURL, err := url.JoinPath(h.cfg.BaseURL, shortURL)
 	if err != nil {
-		writeJSONErrorResponse(rw, http.StatusInternalServerError, err.Error())
+		logger.Log.Error("Failed to generate full short URL",
+			zap.Error(err),
+			zap.String("baseURL", h.cfg.BaseURL),
+			zap.String("shortURL", shortURL),
+		)
+		writeJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
 	writeJSONSuccessResponse(rw, http.StatusCreated, fullShortURL)
 }
@@ -103,6 +123,7 @@ func writeJSONResponse(rw http.ResponseWriter, statusCode int, response model.Po
 	rw.WriteHeader(statusCode)
 	err := json.NewEncoder(rw).Encode(response)
 	if err != nil {
-		http.Error(rw, "failed to encode error response", http.StatusInternalServerError)
+		logger.Log.Error("Failed to encode error response", zap.Error(err))
+		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
