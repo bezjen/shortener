@@ -84,7 +84,10 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 		return
 	}
 
-	fullShortURL := h.cfg.BaseURL + "/" + shortURL
+	fullShortURL, err := url.JoinPath(h.cfg.BaseURL, shortURL)
+	if err != nil {
+		writeJSONErrorResponse(rw, http.StatusInternalServerError, err.Error())
+	}
 	writeJSONSuccessResponse(rw, http.StatusCreated, fullShortURL)
 }
 
