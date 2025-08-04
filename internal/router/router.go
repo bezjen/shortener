@@ -6,7 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Initialize(shortenerHandler handler.ShortenerHandler) *chi.Mux {
+func NewRouter(shortenerHandler handler.ShortenerHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(

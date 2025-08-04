@@ -30,7 +30,7 @@ func main() {
 	}
 	urlShortener := service.NewURLShortener(storage)
 	shortenerHandler := handler.NewShortenerHandler(cfg, urlShortener)
-	shortenerRouter := router.Initialize(*shortenerHandler)
+	shortenerRouter := router.NewRouter(*shortenerHandler)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
