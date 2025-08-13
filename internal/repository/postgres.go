@@ -2,28 +2,26 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"github.com/bezjen/shortener/internal/model"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 )
 
 type PostgresRepository struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 func NewPostgresRepository(databaseDSN string) (*PostgresRepository, error) {
-	db, err := sql.Open("pgx", databaseDSN)
+	db, err := sqlx.Connect("pgx", databaseDSN)
 	if err != nil {
 		return nil, err
 	}
-	return &PostgresRepository{
-		db: db,
-	}, nil
+	return &PostgresRepository{db: db}, nil
 }
 
 func (p *PostgresRepository) Save(ctx context.Context, url model.URL) error {
-	_, err := p.db.ExecContext(ctx,
-		"insert into t_short_url(short_url, original_url) values ($1, $2)", url.ShortURL, url.OriginalURL)
+	_, err := p.db.NamedExecContext(ctx,
+		"insert into t_short_url(short_url, original_url) values (:short_url, :original_url)", url)
 	if err != nil {
 		return err
 	}
@@ -31,19 +29,18 @@ func (p *PostgresRepository) Save(ctx context.Context, url model.URL) error {
 }
 
 func (p *PostgresRepository) SaveBatch(ctx context.Context, urls []model.URL) error {
-	tx, err := p.db.Begin()
+	tx, err := p.db.BeginTxx(ctx, nil)
 
 	if err != nil {
 		return err
 	}
 
 	for _, url := range urls {
-		_, err = tx.ExecContext(ctx,
-			"insert into t_short_url(short_url, original_url) values ($1, $2)", url.ShortURL, url.OriginalURL)
+		_, err = tx.NamedExecContext(ctx,
+			"insert into t_short_url(short_url, original_url) values (:short_url, :original_url)", url)
 		if err != nil {
-			err := tx.Rollback()
-			if err != nil {
-				return err
+			if rbErr := tx.Rollback(); rbErr != nil {
+				return rbErr
 			}
 			return err
 		}
@@ -52,14 +49,10 @@ func (p *PostgresRepository) SaveBatch(ctx context.Context, urls []model.URL) er
 	return tx.Commit()
 }
 
-func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (string, error) {
-	row := p.db.QueryRowContext(ctx, "select original_url from t_short_url where short_url = $1", shortURL)
-	var originalURL string
-	err := row.Scan(&originalURL)
-	if err != nil {
-		return "", err
-	}
-	return originalURL, nil
+func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (originalUrl string, err error) {
+	err = p.db.GetContext(ctx, &originalUrl,
+		"select original_url from t_short_url where short_url = $1", shortURL)
+	return
 }
 
 func (p *PostgresRepository) Ping(ctx context.Context) error {

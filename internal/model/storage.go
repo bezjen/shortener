@@ -9,8 +9,8 @@ type ShortURLFileDto struct {
 }
 
 type URL struct {
-	ShortURL    string
-	OriginalURL string
+	ShortURL    string `db:"short_url"`
+	OriginalURL string `db:"original_url"`
 }
 
 func NewURL(shortURL string, originalURL string) *URL {
