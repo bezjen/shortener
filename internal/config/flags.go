@@ -10,6 +10,7 @@ type Config struct {
 	BaseURL         string
 	LogLevel        string
 	FileStoragePath string
+	DatabaseDSN     string
 }
 
 var AppConfig Config
@@ -19,6 +20,7 @@ func ParseConfig() {
 	flagBaseURL := flag.String("b", "http://localhost:8080", "address and port of tiny url")
 	flagLogLevel := flag.String("l", "info", "log level")
 	flagFileStoragePath := flag.String("f", "./storage.json", "path to file with data")
+	flagDatabaseDSN := flag.String("d", "", "postgres data source name in format `host=%s user=%s password=%s dbname=%s`")
 	flag.Parse()
 
 	addr, addrExists := os.LookupEnv("SERVER_ADDRESS")
@@ -44,5 +46,11 @@ func ParseConfig() {
 		AppConfig.FileStoragePath = fileStoragePath
 	} else {
 		AppConfig.FileStoragePath = *flagFileStoragePath
+	}
+	databaseDSN, databaseDSNExists := os.LookupEnv("DATABASE_DSN")
+	if databaseDSNExists {
+		AppConfig.DatabaseDSN = databaseDSN
+	} else {
+		AppConfig.DatabaseDSN = *flagDatabaseDSN
 	}
 }
