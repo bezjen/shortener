@@ -49,8 +49,8 @@ func (p *PostgresRepository) SaveBatch(ctx context.Context, urls []model.URL) er
 	return tx.Commit()
 }
 
-func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (originalUrl string, err error) {
-	err = p.db.GetContext(ctx, &originalUrl,
+func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (originalURL string, err error) {
+	err = p.db.GetContext(ctx, &originalURL,
 		"select original_url from t_short_url where short_url = $1", shortURL)
 	return
 }
