@@ -22,11 +22,11 @@ func NewPostgresRepository(logger *logger.Logger, databaseDSN string) (*Postgres
 	}, nil
 }
 
-func (p *PostgresRepository) Save(shortURL string, url string) error {
+func (p *PostgresRepository) Save(_ string, _ string) error {
 	return nil
 }
 
-func (p *PostgresRepository) GetByShortURL(shortURL string) (string, error) {
+func (p *PostgresRepository) GetByShortURL(_ string) (string, error) {
 	return "", nil
 }
 
