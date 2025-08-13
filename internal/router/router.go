@@ -20,6 +20,7 @@ func NewRouter(logger *logger.Logger, shortenerHandler handler.ShortenerHandler)
 	r.Get("/ping", shortenerHandler.HandlePingRepository)
 	r.Get("/{shortURL}", shortenerHandler.HandleGetShortURLRedirect)
 	r.Post("/api/shorten", shortenerHandler.HandlePostShortURLJSON)
+	r.Post("/api/shorten/batch", shortenerHandler.HandlePostShortURLBatchJSON)
 
 	return r
 }
