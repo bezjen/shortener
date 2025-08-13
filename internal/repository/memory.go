@@ -1,6 +1,9 @@
 package repository
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 type InMemoryRepository struct {
 	storage map[string]string
@@ -13,7 +16,7 @@ func NewInMemoryRepository() *InMemoryRepository {
 	}
 }
 
-func (m *InMemoryRepository) Save(shortURL string, url string) error {
+func (m *InMemoryRepository) Save(_ context.Context, shortURL string, url string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, exists := m.storage[shortURL]; exists {
@@ -23,7 +26,7 @@ func (m *InMemoryRepository) Save(shortURL string, url string) error {
 	return nil
 }
 
-func (m *InMemoryRepository) GetByShortURL(shortURL string) (string, error) {
+func (m *InMemoryRepository) GetByShortURL(_ context.Context, shortURL string) (string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	storedURL, exists := m.storage[shortURL]
@@ -33,7 +36,7 @@ func (m *InMemoryRepository) GetByShortURL(shortURL string) (string, error) {
 	return storedURL, nil
 }
 
-func (m *InMemoryRepository) Ping() error {
+func (m *InMemoryRepository) Ping(_ context.Context) error {
 	return nil
 }
 

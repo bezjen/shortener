@@ -42,7 +42,7 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 		http.Error(rw, "incorrect url", http.StatusBadRequest)
 		return
 	}
-	shortURL, err := h.shortener.GenerateShortURLPart(bodyString)
+	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), bodyString)
 	if err != nil {
 		h.logger.Error("Failed to generate short URL",
 			zap.Error(err),
@@ -64,7 +64,7 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 		http.Error(rw, "short url is empty", http.StatusBadRequest)
 		return
 	}
-	resultURL, err := h.shortener.GetURLByShortURLPart(shortURL)
+	resultURL, err := h.shortener.GetURLByShortURLPart(r.Context(), shortURL)
 	if err != nil {
 		h.logger.Error("Failed to get url by short url",
 			zap.Error(err),
@@ -91,7 +91,7 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 		h.writeJSONErrorResponse(rw, http.StatusBadRequest, "incorrect url")
 		return
 	}
-	shortURL, err := h.shortener.GenerateShortURLPart(request.URL)
+	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), request.URL)
 	if err != nil {
 		h.logger.Error("Failed to generate short URL",
 			zap.Error(err),
@@ -113,8 +113,8 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 	h.writeJSONSuccessResponse(rw, http.StatusCreated, fullShortURL)
 }
 
-func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, _ *http.Request) {
-	err := h.shortener.PingRepository()
+func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, r *http.Request) {
+	err := h.shortener.PingRepository(r.Context())
 	if err != nil {
 		h.logger.Error("Failed to ping",
 			zap.Error(err),

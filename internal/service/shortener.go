@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"github.com/bezjen/shortener/internal/repository"
@@ -16,9 +17,9 @@ const (
 var ErrGenerate = errors.New("failed to generate short url")
 
 type Shortener interface {
-	GenerateShortURLPart(url string) (string, error)
-	GetURLByShortURLPart(shortURLPart string) (string, error)
-	PingRepository() error
+	GenerateShortURLPart(ctx context.Context, url string) (string, error)
+	GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error)
+	PingRepository(ctx context.Context) error
 }
 
 type URLShortener struct {
@@ -31,13 +32,13 @@ func NewURLShortener(storage repository.Repository) *URLShortener {
 	}
 }
 
-func (u *URLShortener) GenerateShortURLPart(url string) (string, error) {
+func (u *URLShortener) GenerateShortURLPart(ctx context.Context, url string) (string, error) {
 	for i := 0; i < maxAttemptsCount; i++ {
 		shortURL, err := generateRandomString(shortURLLength)
 		if err != nil {
 			return "", err
 		}
-		err = u.storage.Save(shortURL, url)
+		err = u.storage.Save(ctx, shortURL, url)
 		if err != nil {
 			if errors.Is(err, repository.ErrConflict) {
 				continue
@@ -49,16 +50,16 @@ func (u *URLShortener) GenerateShortURLPart(url string) (string, error) {
 	return "", ErrGenerate
 }
 
-func (u *URLShortener) GetURLByShortURLPart(shortURLPart string) (string, error) {
-	resultURL, err := u.storage.GetByShortURL(shortURLPart)
+func (u *URLShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error) {
+	resultURL, err := u.storage.GetByShortURL(ctx, shortURLPart)
 	if err != nil {
 		return "", err
 	}
 	return resultURL, nil
 }
 
-func (u *URLShortener) PingRepository() error {
-	return u.storage.Ping()
+func (u *URLShortener) PingRepository(ctx context.Context) error {
+	return u.storage.Ping(ctx)
 }
 
 func generateRandomString(length int) (string, error) {

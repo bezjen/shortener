@@ -19,18 +19,18 @@ type MockShortener struct {
 	mock.Mock
 }
 
-func (m *MockShortener) GenerateShortURLPart(url string) (string, error) {
-	args := m.Called(url)
+func (m *MockShortener) GenerateShortURLPart(ctx context.Context, url string) (string, error) {
+	args := m.Called(ctx, url)
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockShortener) GetURLByShortURLPart(id string) (string, error) {
-	args := m.Called(id)
+func (m *MockShortener) GetURLByShortURLPart(ctx context.Context, id string) (string, error) {
+	args := m.Called(ctx, id)
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockShortener) PingRepository() error {
-	args := m.Called()
+func (m *MockShortener) PingRepository(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 
@@ -47,7 +47,7 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(MockShortener)
-	mockShortener.On("GetURLByShortURLPart", "qwerty12").
+	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty12").
 		Return("https://practicum.yandex.ru/", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
@@ -107,7 +107,7 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(MockShortener)
-	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
+	mockShortener.On("GenerateShortURLPart", mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
@@ -157,7 +157,7 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(MockShortener)
-	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
+	mockShortener.On("GenerateShortURLPart", mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
@@ -214,7 +214,7 @@ func TestHandlePingRepository(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(MockShortener)
-	mockShortener.On("PingRepository").Return(nil)
+	mockShortener.On("PingRepository", mock.Anything).Return(nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
 	tests := []struct {

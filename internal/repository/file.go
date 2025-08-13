@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/model"
@@ -36,7 +37,7 @@ func NewFileRepository(cfg config.Config) (*FileRepository, error) {
 	}, nil
 }
 
-func (f *FileRepository) Save(shortURL string, url string) error {
+func (f *FileRepository) Save(_ context.Context, shortURL string, url string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if _, exists := f.memoryStorage[shortURL]; exists {
@@ -50,7 +51,7 @@ func (f *FileRepository) Save(shortURL string, url string) error {
 	return nil
 }
 
-func (f *FileRepository) GetByShortURL(shortURL string) (string, error) {
+func (f *FileRepository) GetByShortURL(_ context.Context, shortURL string) (string, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	storedShortURLDto, exists := f.memoryStorage[shortURL]
@@ -60,7 +61,7 @@ func (f *FileRepository) GetByShortURL(shortURL string) (string, error) {
 	return storedShortURLDto.OriginalURL, nil
 }
 
-func (f *FileRepository) Ping() error {
+func (f *FileRepository) Ping(_ context.Context) error {
 	return nil
 }
 

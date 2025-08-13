@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"testing"
 )
@@ -21,11 +22,11 @@ func TestInMemoryRepositorySuccess(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(tt.shortURL, tt.originalURL)
+			err := repo.Save(context.TODO(), tt.shortURL, tt.originalURL)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			result, err := repo.GetByShortURL(tt.shortURL)
+			result, err := repo.GetByShortURL(context.TODO(), tt.shortURL)
 			if err != nil {
 				t.Fatalf("GetByShortURL failed: %v", err)
 			}
@@ -52,11 +53,11 @@ func TestInMemoryRepositoryErrConflict(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(tt.shortURL, tt.originalURL)
+			err := repo.Save(context.TODO(), tt.shortURL, tt.originalURL)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.Save(tt.shortURL, tt.originalURL)
+			err = repo.Save(context.TODO(), tt.shortURL, tt.originalURL)
 			if !errors.Is(err, ErrConflict) {
 				t.Errorf("got %v, want %v", err, ErrConflict)
 			}
@@ -64,7 +65,7 @@ func TestInMemoryRepositoryErrConflict(t *testing.T) {
 	}
 
 	t.Run("Get not-existed URL (ErrNotFound)", func(t *testing.T) {
-		_, err := repo.GetByShortURL("non-existent")
+		_, err := repo.GetByShortURL(context.TODO(), "non-existent")
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("got %v, want %v", err, ErrNotFound)
 		}
@@ -75,7 +76,7 @@ func TestInMemoryRepositoryErrNotFound(t *testing.T) {
 	repo := NewInMemoryRepository()
 
 	t.Run("Get not-existed URL (ErrNotFound)", func(t *testing.T) {
-		_, err := repo.GetByShortURL("non-existent")
+		_, err := repo.GetByShortURL(context.TODO(), "non-existent")
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("got %v, want %v", err, ErrNotFound)
 		}

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"github.com/bezjen/shortener/internal/repository"
 	"github.com/stretchr/testify/assert"
@@ -12,18 +13,18 @@ type MockRepository struct {
 	mock.Mock
 }
 
-func (m *MockRepository) Save(id string, url string) error {
-	args := m.Called(id, url)
+func (m *MockRepository) Save(ctx context.Context, id string, url string) error {
+	args := m.Called(ctx, id, url)
 	return args.Error(0)
 }
 
-func (m *MockRepository) GetByShortURL(id string) (string, error) {
-	args := m.Called(id)
+func (m *MockRepository) GetByShortURL(ctx context.Context, id string) (string, error) {
+	args := m.Called(ctx, id)
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockRepository) Ping() error {
-	args := m.Called()
+func (m *MockRepository) Ping(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 
@@ -34,10 +35,10 @@ func (m *MockRepository) Close() error {
 
 func TestGenerateShortURLPart(t *testing.T) {
 	mockPositiveRepo := new(MockRepository)
-	mockPositiveRepo.On("Save", mock.Anything, "https://practicum.yandex.ru/").
+	mockPositiveRepo.On("Save", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
 		Return(nil)
 	mockCollisionRepo := new(MockRepository)
-	mockCollisionRepo.On("Save", mock.Anything, "https://practicum.yandex.ru/").
+	mockCollisionRepo.On("Save", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
 		Return(repository.ErrConflict)
 	tests := []struct {
 		name    string
@@ -66,7 +67,7 @@ func TestGenerateShortURLPart(t *testing.T) {
 			u := &URLShortener{
 				storage: tt.storage,
 			}
-			shortURL, err := u.GenerateShortURLPart(tt.url)
+			shortURL, err := u.GenerateShortURLPart(context.TODO(), tt.url)
 			if err != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)
@@ -80,10 +81,10 @@ func TestGenerateShortURLPart(t *testing.T) {
 
 func TestGetURLByShortURLPart(t *testing.T) {
 	mockRepoPositive := new(MockRepository)
-	mockRepoPositive.On("GetByShortURL", "qwerty12").
+	mockRepoPositive.On("GetByShortURL", mock.Anything, "qwerty12").
 		Return("https://practicum.yandex.ru/", nil)
 	mockRepoNotFound := new(MockRepository)
-	mockRepoNotFound.On("GetByShortURL", "qwerty12").
+	mockRepoNotFound.On("GetByShortURL", mock.Anything, "qwerty12").
 		Return("", repository.ErrNotFound)
 
 	tests := []struct {
@@ -113,7 +114,7 @@ func TestGetURLByShortURLPart(t *testing.T) {
 			u := &URLShortener{
 				storage: tt.storage,
 			}
-			got, err := u.GetURLByShortURLPart(tt.shortURLPart)
+			got, err := u.GetURLByShortURLPart(context.TODO(), tt.shortURLPart)
 			if err != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)

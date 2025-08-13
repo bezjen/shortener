@@ -1,6 +1,9 @@
 package repository
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 var (
 	ErrNotFound = errors.New("record not found")
@@ -8,8 +11,8 @@ var (
 )
 
 type Repository interface {
-	Save(id string, url string) error
-	GetByShortURL(id string) (string, error)
-	Ping() error
+	Save(ctx context.Context, id string, url string) error
+	GetByShortURL(ctx context.Context, id string) (string, error)
+	Ping(ctx context.Context) error
 	Close() error
 }

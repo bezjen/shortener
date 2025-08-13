@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"github.com/bezjen/shortener/internal/logger"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -22,16 +23,16 @@ func NewPostgresRepository(logger *logger.Logger, databaseDSN string) (*Postgres
 	}, nil
 }
 
-func (p *PostgresRepository) Save(_ string, _ string) error {
+func (p *PostgresRepository) Save(ctx context.Context, shortURL string, url string) error {
 	return nil
 }
 
-func (p *PostgresRepository) GetByShortURL(_ string) (string, error) {
+func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (string, error) {
 	return "", nil
 }
 
-func (p *PostgresRepository) Ping() error {
-	return p.db.Ping()
+func (p *PostgresRepository) Ping(ctx context.Context) error {
+	return p.db.PingContext(ctx)
 }
 
 func (p *PostgresRepository) Close() error {
