@@ -57,7 +57,7 @@ func TestFileRepositoryErrConflict(t *testing.T) {
 		url  model.URL
 	}{
 		{
-			name: "Save the same url twice (ErrConflict)",
+			name: "Save the same url twice (ErrShortURLConflict)",
 			url:  *model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 		},
 	}
@@ -68,8 +68,8 @@ func TestFileRepositoryErrConflict(t *testing.T) {
 				t.Fatalf("Save failed: %v", err)
 			}
 			err = repo.Save(context.TODO(), tt.url)
-			if !errors.Is(err, ErrConflict) {
-				t.Errorf("got %v, want %v", err, ErrConflict)
+			if !errors.Is(err, ErrShortURLConflict) {
+				t.Errorf("got %v, want %v", err, ErrShortURLConflict)
 			}
 		})
 	}

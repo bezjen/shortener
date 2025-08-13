@@ -43,7 +43,7 @@ func (u *URLShortener) GenerateShortURLPart(ctx context.Context, url string) (st
 		}
 		err = u.storage.Save(ctx, *model.NewURL(shortURL, url))
 		if err != nil {
-			if errors.Is(err, repository.ErrConflict) {
+			if errors.Is(err, repository.ErrShortURLConflict) {
 				continue
 			}
 			return "", err
@@ -69,7 +69,7 @@ func (u *URLShortener) GenerateShortURLPartBatch(ctx context.Context,
 		}
 		err := u.storage.SaveBatch(ctx, generatedURLs)
 		if err != nil {
-			if errors.Is(err, repository.ErrConflict) {
+			if errors.Is(err, repository.ErrShortURLConflict) {
 				continue
 			}
 			return nil, err

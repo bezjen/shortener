@@ -43,7 +43,7 @@ func TestGenerateShortURLPart(t *testing.T) {
 	mockPositiveRepo := new(MockRepository)
 	mockPositiveRepo.On("Save", mock.Anything, mock.Anything).Return(nil)
 	mockCollisionRepo := new(MockRepository)
-	mockCollisionRepo.On("Save", mock.Anything, mock.Anything).Return(repository.ErrConflict)
+	mockCollisionRepo.On("Save", mock.Anything, mock.Anything).Return(repository.ErrShortURLConflict)
 	tests := []struct {
 		name    string
 		storage repository.Repository
@@ -85,7 +85,7 @@ func TestGenerateShortURLPartBatch(t *testing.T) {
 	mockPositiveRepo := new(MockRepository)
 	mockPositiveRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(nil)
 	mockCollisionRepo := new(MockRepository)
-	mockCollisionRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(repository.ErrConflict)
+	mockCollisionRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(repository.ErrShortURLConflict)
 	tests := []struct {
 		name    string
 		storage repository.Repository

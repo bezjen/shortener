@@ -41,7 +41,7 @@ func (f *FileRepository) Save(_ context.Context, url model.URL) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if _, exists := f.memoryStorage[url.ShortURL]; exists {
-		return ErrConflict
+		return ErrShortURLConflict
 	}
 	shortURLDto, err := f.saveShortURLDtoToStorage(url)
 	if err != nil {
@@ -56,7 +56,7 @@ func (f *FileRepository) SaveBatch(_ context.Context, urls []model.URL) error {
 	defer f.mu.Unlock()
 	for _, url := range urls {
 		if _, exists := f.memoryStorage[url.ShortURL]; exists {
-			return ErrConflict
+			return ErrShortURLConflict
 		}
 	}
 	var savedKeys []string

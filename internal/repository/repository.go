@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("record not found")
-	ErrConflict = errors.New("record already exists")
+	ErrNotFound         = errors.New("record not found")
+	ErrShortURLConflict = errors.New("record already exists")
 )
 
 type Repository interface {

@@ -78,7 +78,7 @@ func TestInMemoryRepositoryErrConflict(t *testing.T) {
 		url  model.URL
 	}{
 		{
-			name: "Save the same url twice (ErrConflict)",
+			name: "Save the same url twice (ErrShortURLConflict)",
 			url:  *model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 		},
 	}
@@ -89,8 +89,8 @@ func TestInMemoryRepositoryErrConflict(t *testing.T) {
 				t.Fatalf("Save failed: %v", err)
 			}
 			err = repo.Save(context.TODO(), tt.url)
-			if !errors.Is(err, ErrConflict) {
-				t.Errorf("got %v, want %v", err, ErrConflict)
+			if !errors.Is(err, ErrShortURLConflict) {
+				t.Errorf("got %v, want %v", err, ErrShortURLConflict)
 			}
 		})
 	}
@@ -111,7 +111,7 @@ func TestInMemoryRepositorySaveBatchErrConflict(t *testing.T) {
 		batch []model.URL
 	}{
 		{
-			name: "Save the same url twice (ErrConflict)",
+			name: "Save the same url twice (ErrShortURLConflict)",
 			batch: []model.URL{
 				*model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 			},
@@ -124,8 +124,8 @@ func TestInMemoryRepositorySaveBatchErrConflict(t *testing.T) {
 				t.Fatalf("Save failed: %v", err)
 			}
 			err = repo.SaveBatch(context.TODO(), tt.batch)
-			if !errors.Is(err, ErrConflict) {
-				t.Errorf("got %v, want %v", err, ErrConflict)
+			if !errors.Is(err, ErrShortURLConflict) {
+				t.Errorf("got %v, want %v", err, ErrShortURLConflict)
 			}
 		})
 	}
