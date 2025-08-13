@@ -46,9 +46,9 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 	}
 	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), bodyString)
 	if err != nil {
-		var uniqueUrlErr *repository.ErrURLConflict
-		if errors.As(err, &uniqueUrlErr) {
-			resultURL, err := url.JoinPath(h.cfg.BaseURL, uniqueUrlErr.ShortURL)
+		var uniqueURLErr *repository.ErrURLConflict
+		if errors.As(err, &uniqueURLErr) {
+			resultURL, err := url.JoinPath(h.cfg.BaseURL, uniqueURLErr.ShortURL)
 			if err != nil {
 				http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
@@ -112,9 +112,9 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 	}
 	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), request.URL)
 	if err != nil {
-		var uniqueUrlErr *repository.ErrURLConflict
-		if errors.As(err, &uniqueUrlErr) {
-			fullShortURL, err := url.JoinPath(h.cfg.BaseURL, uniqueUrlErr.ShortURL)
+		var uniqueURLErr *repository.ErrURLConflict
+		if errors.As(err, &uniqueURLErr) {
+			fullShortURL, err := url.JoinPath(h.cfg.BaseURL, uniqueURLErr.ShortURL)
 			if err != nil {
 				h.logger.Error("Failed to generate full short OriginalURL",
 					zap.Error(err),
