@@ -34,12 +34,12 @@ func (p *PostgresRepository) Save(ctx context.Context, shortURL string, url stri
 
 func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (string, error) {
 	row := p.db.QueryRowContext(ctx, "select original_url from t_short_url where short_url = $1", shortURL)
-	var originalUrl string
-	err := row.Scan(&originalUrl)
+	var originalURL string
+	err := row.Scan(&originalURL)
 	if err != nil {
 		return "", err
 	}
-	return originalUrl, nil
+	return originalURL, nil
 }
 
 func (p *PostgresRepository) Ping(ctx context.Context) error {
