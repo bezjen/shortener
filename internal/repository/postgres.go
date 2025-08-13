@@ -36,6 +36,14 @@ func (p *PostgresRepository) GetByShortURL(shortURL string) (string, error) {
 	return "", nil
 }
 
+func (p *PostgresRepository) Close() error {
+	return p.db.Close()
+}
+
+func (p *PostgresRepository) Ping() error {
+	return p.db.Ping()
+}
+
 func (p *PostgresRepository) buildShortURLDto(shortURL string, originalURL string) (*model.ShortURLDto, error) {
 	id, err := uuid.NewUUID()
 	if err != nil {

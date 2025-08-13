@@ -60,6 +60,14 @@ func (f *FileRepository) GetByShortURL(shortURL string) (string, error) {
 	return storedShortURLDto.OriginalURL, nil
 }
 
+func (f *FileRepository) Close() error {
+	return f.fileStorage.Close()
+}
+
+func (f *FileRepository) Ping() error {
+	return nil
+}
+
 func (f *FileRepository) saveShortURLDtoToStorage(shortURL string, originalURL string) (*model.ShortURLDto, error) {
 	id, err := uuid.NewUUID()
 	if err != nil {

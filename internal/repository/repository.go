@@ -10,4 +10,6 @@ var (
 type Repository interface {
 	Save(id string, url string) error
 	GetByShortURL(id string) (string, error)
+	Close() error
+	Ping() error
 }
