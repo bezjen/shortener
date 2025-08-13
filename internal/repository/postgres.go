@@ -3,24 +3,21 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/model"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type PostgresRepository struct {
-	logger *logger.Logger
-	db     *sql.DB
+	db *sql.DB
 }
 
-func NewPostgresRepository(logger *logger.Logger, databaseDSN string) (*PostgresRepository, error) {
+func NewPostgresRepository(databaseDSN string) (*PostgresRepository, error) {
 	db, err := sql.Open("pgx", databaseDSN)
 	if err != nil {
 		return nil, err
 	}
 	return &PostgresRepository{
-		logger: logger,
-		db:     db,
+		db: db,
 	}, nil
 }
 
@@ -34,8 +31,25 @@ func (p *PostgresRepository) Save(ctx context.Context, url model.URL) error {
 }
 
 func (p *PostgresRepository) SaveBatch(ctx context.Context, urls []model.URL) error {
-	// TODO
-	return nil
+	tx, err := p.db.Begin()
+
+	if err != nil {
+		return err
+	}
+
+	for _, url := range urls {
+		_, err = tx.ExecContext(ctx,
+			"insert into t_short_url(short_url, original_url) values ($1, $2)", url.ShortURL, url.OriginalURL)
+		if err != nil {
+			err := tx.Rollback()
+			if err != nil {
+				return err
+			}
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (string, error) {
