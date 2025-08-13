@@ -48,8 +48,12 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 	if err != nil {
 		var uniqueUrlErr *repository.ErrURLConflict
 		if errors.As(err, &uniqueUrlErr) {
-			resultURL := h.cfg.BaseURL + "/" + uniqueUrlErr.ShortURL
-			rw.Header().Set("Content-Type", "text/plain") // TODO: remove duplication
+			resultURL, err := url.JoinPath(h.cfg.BaseURL, uniqueUrlErr.ShortURL)
+			if err != nil {
+				http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			rw.Header().Set("Content-Type", "text/plain")
 			rw.WriteHeader(http.StatusConflict)
 			rw.Write([]byte(resultURL))
 			return
@@ -63,7 +67,11 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 		return
 	}
 
-	resultURL := h.cfg.BaseURL + "/" + shortURL
+	resultURL, err := url.JoinPath(h.cfg.BaseURL, shortURL)
+	if err != nil {
+		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusCreated)
 	rw.Write([]byte(resultURL))
@@ -106,7 +114,7 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 	if err != nil {
 		var uniqueUrlErr *repository.ErrURLConflict
 		if errors.As(err, &uniqueUrlErr) {
-			fullShortURL, err := url.JoinPath(h.cfg.BaseURL, uniqueUrlErr.ShortURL) // TODO: remove duplication
+			fullShortURL, err := url.JoinPath(h.cfg.BaseURL, uniqueUrlErr.ShortURL)
 			if err != nil {
 				h.logger.Error("Failed to generate full short OriginalURL",
 					zap.Error(err),
