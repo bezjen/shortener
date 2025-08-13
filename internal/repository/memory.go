@@ -33,10 +33,10 @@ func (m *InMemoryRepository) GetByShortURL(shortURL string) (string, error) {
 	return storedURL, nil
 }
 
-func (m *InMemoryRepository) Close() error {
+func (m *InMemoryRepository) Ping() error {
 	return nil
 }
 
-func (m *InMemoryRepository) Ping() error {
+func (m *InMemoryRepository) Close() error {
 	return nil
 }

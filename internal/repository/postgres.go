@@ -30,10 +30,10 @@ func (p *PostgresRepository) GetByShortURL(_ string) (string, error) {
 	return "", nil
 }
 
-func (p *PostgresRepository) Close() error {
-	return p.db.Close()
-}
-
 func (p *PostgresRepository) Ping() error {
 	return p.db.Ping()
+}
+
+func (p *PostgresRepository) Close() error {
+	return p.db.Close()
 }

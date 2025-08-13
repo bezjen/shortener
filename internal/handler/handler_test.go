@@ -233,6 +233,7 @@ func TestHandlePingRepository(t *testing.T) {
 
 			h.HandlePingRepository(rr, req)
 			res := rr.Result()
+			defer res.Body.Close()
 			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
 		})
 	}

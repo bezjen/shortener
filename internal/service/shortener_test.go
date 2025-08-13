@@ -22,6 +22,16 @@ func (m *MockRepository) GetByShortURL(id string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockRepository) Ping() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockRepository) Close() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
 func TestGenerateShortURLPart(t *testing.T) {
 	mockPositiveRepo := new(MockRepository)
 	mockPositiveRepo.On("Save", mock.Anything, "https://practicum.yandex.ru/").
