@@ -92,12 +92,12 @@ func (p *PostgresRepository) newURLExistsError(ctx context.Context, originalURL 
 
 func (p *PostgresRepository) getShortURLByOriginalURL(ctx context.Context, originalURL string) (string, error) {
 	row := p.db.QueryRowContext(ctx, "select short_url from t_short_url where original_url = $1", originalURL)
-	var shortUrl string
-	err := row.Scan(&shortUrl)
+	var shortURL string
+	err := row.Scan(&shortURL)
 	if err != nil {
 		return "", err
 	}
-	return shortUrl, nil
+	return shortURL, nil
 }
 
 func isUniqueViolation(err error) bool {
