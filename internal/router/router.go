@@ -17,7 +17,7 @@ func NewRouter(logger *logger.Logger, shortenerHandler handler.ShortenerHandler)
 		m.WithGzipResponseCompression)
 
 	r.Post("/", shortenerHandler.HandlePostShortURLTextPlain)
-	r.Get("/Ping", shortenerHandler.HandlePingRepository)
+	r.Get("/ping", shortenerHandler.HandlePingRepository)
 	r.Get("/{shortURL}", shortenerHandler.HandleGetShortURLRedirect)
 	r.Post("/api/shorten", shortenerHandler.HandlePostShortURLJSON)
 
