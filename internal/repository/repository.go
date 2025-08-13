@@ -13,6 +13,7 @@ var (
 
 type Repository interface {
 	Save(ctx context.Context, url model.URL) error
+	SaveBatch(ctx context.Context, urls []model.URL) error
 	GetByShortURL(ctx context.Context, id string) (string, error)
 	Ping(ctx context.Context) error
 	Close() error

@@ -33,6 +33,11 @@ func (p *PostgresRepository) Save(ctx context.Context, url model.URL) error {
 	return nil
 }
 
+func (p *PostgresRepository) SaveBatch(ctx context.Context, urls []model.URL) error {
+	// TODO
+	return nil
+}
+
 func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (string, error) {
 	row := p.db.QueryRowContext(ctx, "select original_url from t_short_url where short_url = $1", shortURL)
 	var originalURL string

@@ -23,28 +23,26 @@ func TestFileRepositorySuccess(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name        string
-		shortURL    string
-		originalURL string
+		name string
+		url  model.URL
 	}{
 		{
-			name:        "Simple positive case",
-			shortURL:    "qwerty12",
-			originalURL: "https://practicum.yandex.ru/",
+			name: "Simple positive case",
+			url:  *model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(context.TODO(), *model.NewURL(tt.shortURL, tt.originalURL))
+			err := repo.Save(context.TODO(), tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			result, err := repo.GetByShortURL(context.TODO(), tt.shortURL)
+			result, err := repo.GetByShortURL(context.TODO(), tt.url.ShortURL)
 			if err != nil {
 				t.Fatalf("GetByShortURL failed: %v", err)
 			}
-			if result != tt.originalURL {
-				t.Errorf("got %q, want %q", result, tt.originalURL)
+			if result != tt.url.OriginalURL {
+				t.Errorf("got %q, want %q", result, tt.url.OriginalURL)
 			}
 		})
 	}
@@ -55,23 +53,21 @@ func TestFileRepositoryErrConflict(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name        string
-		shortURL    string
-		originalURL string
+		name string
+		url  model.URL
 	}{
 		{
-			name:        "Save the same url twice (ErrConflict)",
-			shortURL:    "qwerty12",
-			originalURL: "https://practicum.yandex.ru/",
+			name: "Save the same url twice (ErrConflict)",
+			url:  *model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(context.TODO(), *model.NewURL(tt.shortURL, tt.originalURL))
+			err := repo.Save(context.TODO(), tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.Save(context.TODO(), *model.NewURL(tt.shortURL, tt.originalURL))
+			err = repo.Save(context.TODO(), tt.url)
 			if !errors.Is(err, ErrConflict) {
 				t.Errorf("got %v, want %v", err, ErrConflict)
 			}

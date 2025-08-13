@@ -19,6 +19,11 @@ func (m *MockRepository) Save(ctx context.Context, url model.URL) error {
 	return args.Error(0)
 }
 
+func (m *MockRepository) SaveBatch(ctx context.Context, url []model.URL) error {
+	args := m.Called(ctx, url)
+	return args.Error(0)
+}
+
 func (m *MockRepository) GetByShortURL(ctx context.Context, id string) (string, error) {
 	args := m.Called(ctx, id)
 	return args.String(0), args.Error(1)

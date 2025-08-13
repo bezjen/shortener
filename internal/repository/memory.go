@@ -27,6 +27,20 @@ func (m *InMemoryRepository) Save(_ context.Context, url model.URL) error {
 	return nil
 }
 
+func (m *InMemoryRepository) SaveBatch(_ context.Context, urls []model.URL) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, url := range urls {
+		if _, exists := m.storage[url.ShortURL]; exists {
+			return ErrConflict
+		}
+	}
+	for _, url := range urls {
+		m.storage[url.ShortURL] = url.OriginalURL
+	}
+	return nil
+}
+
 func (m *InMemoryRepository) GetByShortURL(_ context.Context, shortURL string) (string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
