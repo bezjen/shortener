@@ -24,7 +24,7 @@ func main() {
 		return
 	}
 
-	storage, err := db.InitDB(shortenerLogger, cfg)
+	storage, err := db.InitDB(cfg)
 	if err != nil {
 		log.Printf("Error during storage initialization: %v", err)
 		return

@@ -3,20 +3,19 @@ package db
 import (
 	"errors"
 	"github.com/bezjen/shortener/internal/config"
-	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/repository"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-func InitDB(logger *logger.Logger, cfg config.Config) (repository.Repository, error) {
+func InitDB(cfg config.Config) (repository.Repository, error) {
 	if cfg.DatabaseDSN != "" {
 		if err := runMigrations(cfg.DatabaseDSN); err != nil {
 			return nil, err
 		}
 
-		repoDB, err := repository.NewPostgresRepository(logger, cfg.DatabaseDSN)
+		repoDB, err := repository.NewPostgresRepository(cfg.DatabaseDSN)
 		if err != nil {
 			return nil, err
 		}
