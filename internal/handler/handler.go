@@ -113,6 +113,17 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 	h.writeJSONSuccessResponse(rw, http.StatusCreated, fullShortURL)
 }
 
+func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, _ *http.Request) {
+	err := h.shortener.PingRepository()
+	if err != nil {
+		h.logger.Error("Failed to ping",
+			zap.Error(err),
+		)
+		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+}
+
 func (h *ShortenerHandler) writeJSONSuccessResponse(rw http.ResponseWriter, statusCode int, shortURL string) {
 	h.writeJSONResponse(rw, statusCode, model.PostShortURLJSONResponse{ShortURL: shortURL})
 }

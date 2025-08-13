@@ -18,6 +18,7 @@ var ErrGenerate = errors.New("failed to generate short url")
 type Shortener interface {
 	GenerateShortURLPart(url string) (string, error)
 	GetURLByShortURLPart(shortURLPart string) (string, error)
+	PingRepository() error
 }
 
 type URLShortener struct {
@@ -54,6 +55,10 @@ func (u *URLShortener) GetURLByShortURLPart(shortURLPart string) (string, error)
 		return "", err
 	}
 	return resultURL, nil
+}
+
+func (u *URLShortener) PingRepository() error {
+	return u.storage.Ping()
 }
 
 func generateRandomString(length int) (string, error) {

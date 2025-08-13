@@ -3,8 +3,6 @@ package repository
 import (
 	"database/sql"
 	"github.com/bezjen/shortener/internal/logger"
-	"github.com/bezjen/shortener/internal/model"
-	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -25,10 +23,6 @@ func NewPostgresRepository(logger *logger.Logger, databaseDSN string) (*Postgres
 }
 
 func (p *PostgresRepository) Save(shortURL string, url string) error {
-	_, err := p.buildShortURLDto(shortURL, url)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -42,17 +36,4 @@ func (p *PostgresRepository) Close() error {
 
 func (p *PostgresRepository) Ping() error {
 	return p.db.Ping()
-}
-
-func (p *PostgresRepository) buildShortURLDto(shortURL string, originalURL string) (*model.ShortURLDto, error) {
-	id, err := uuid.NewUUID()
-	if err != nil {
-		return nil, err
-	}
-	shortURLDto := model.ShortURLDto{
-		ID:          id,
-		ShortURL:    shortURL,
-		OriginalURL: originalURL,
-	}
-	return &shortURLDto, nil
 }
