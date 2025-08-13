@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/bezjen/shortener/internal/config"
+	"github.com/bezjen/shortener/internal/model"
 	"os"
 	"testing"
 )
@@ -34,7 +35,7 @@ func TestFileRepositorySuccess(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(context.TODO(), tt.shortURL, tt.originalURL)
+			err := repo.Save(context.TODO(), *model.NewURL(tt.shortURL, tt.originalURL))
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
@@ -66,11 +67,11 @@ func TestFileRepositoryErrConflict(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(context.TODO(), tt.shortURL, tt.originalURL)
+			err := repo.Save(context.TODO(), *model.NewURL(tt.shortURL, tt.originalURL))
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.Save(context.TODO(), tt.shortURL, tt.originalURL)
+			err = repo.Save(context.TODO(), *model.NewURL(tt.shortURL, tt.originalURL))
 			if !errors.Is(err, ErrConflict) {
 				t.Errorf("got %v, want %v", err, ErrConflict)
 			}

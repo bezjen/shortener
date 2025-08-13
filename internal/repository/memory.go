@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"github.com/bezjen/shortener/internal/model"
 	"sync"
 )
 
@@ -16,13 +17,13 @@ func NewInMemoryRepository() *InMemoryRepository {
 	}
 }
 
-func (m *InMemoryRepository) Save(_ context.Context, shortURL string, url string) error {
+func (m *InMemoryRepository) Save(_ context.Context, url model.URL) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, exists := m.storage[shortURL]; exists {
+	if _, exists := m.storage[url.ShortURL]; exists {
 		return ErrConflict
 	}
-	m.storage[shortURL] = url
+	m.storage[url.ShortURL] = url.OriginalURL
 	return nil
 }
 

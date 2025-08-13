@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"github.com/bezjen/shortener/internal/model"
 )
 
 var (
@@ -11,7 +12,7 @@ var (
 )
 
 type Repository interface {
-	Save(ctx context.Context, id string, url string) error
+	Save(ctx context.Context, url model.URL) error
 	GetByShortURL(ctx context.Context, id string) (string, error)
 	Ping(ctx context.Context) error
 	Close() error

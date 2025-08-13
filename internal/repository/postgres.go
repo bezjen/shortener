@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/bezjen/shortener/internal/logger"
+	"github.com/bezjen/shortener/internal/model"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -23,9 +24,9 @@ func NewPostgresRepository(logger *logger.Logger, databaseDSN string) (*Postgres
 	}, nil
 }
 
-func (p *PostgresRepository) Save(ctx context.Context, shortURL string, url string) error {
+func (p *PostgresRepository) Save(ctx context.Context, url model.URL) error {
 	_, err := p.db.ExecContext(ctx,
-		"insert into t_short_url(short_url, original_url) values ($1, $2)", shortURL, url)
+		"insert into t_short_url(short_url, original_url) values ($1, $2)", url.ShortURL, url.OriginalURL)
 	if err != nil {
 		return err
 	}

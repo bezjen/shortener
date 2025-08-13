@@ -15,7 +15,7 @@ type FileRepository struct {
 	fileStorage   os.File
 	encoder       json.Encoder
 	decoder       json.Decoder
-	memoryStorage map[string]model.ShortURLDto
+	memoryStorage map[string]model.ShortURLFileDto
 	mu            sync.RWMutex
 }
 
@@ -37,17 +37,17 @@ func NewFileRepository(cfg config.Config) (*FileRepository, error) {
 	}, nil
 }
 
-func (f *FileRepository) Save(_ context.Context, shortURL string, url string) error {
+func (f *FileRepository) Save(_ context.Context, url model.URL) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if _, exists := f.memoryStorage[shortURL]; exists {
+	if _, exists := f.memoryStorage[url.ShortURL]; exists {
 		return ErrConflict
 	}
-	shortURLDto, err := f.saveShortURLDtoToStorage(shortURL, url)
+	shortURLDto, err := f.saveShortURLDtoToStorage(url)
 	if err != nil {
 		return err
 	}
-	f.memoryStorage[shortURL] = *shortURLDto
+	f.memoryStorage[url.ShortURL] = *shortURLDto
 	return nil
 }
 
@@ -69,15 +69,15 @@ func (f *FileRepository) Close() error {
 	return f.fileStorage.Close()
 }
 
-func (f *FileRepository) saveShortURLDtoToStorage(shortURL string, originalURL string) (*model.ShortURLDto, error) {
+func (f *FileRepository) saveShortURLDtoToStorage(url model.URL) (*model.ShortURLFileDto, error) {
 	id, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
 	}
-	shortURLDto := model.ShortURLDto{
+	shortURLDto := model.ShortURLFileDto{
 		ID:          id,
-		ShortURL:    shortURL,
-		OriginalURL: originalURL,
+		ShortURL:    url.ShortURL,
+		OriginalURL: url.OriginalURL,
 	}
 	err = f.encoder.Encode(&shortURLDto)
 	if err != nil {
@@ -86,10 +86,10 @@ func (f *FileRepository) saveShortURLDtoToStorage(shortURL string, originalURL s
 	return &shortURLDto, nil
 }
 
-func loadFileData(decoder json.Decoder) (map[string]model.ShortURLDto, error) {
-	memoryStorage := make(map[string]model.ShortURLDto)
+func loadFileData(decoder json.Decoder) (map[string]model.ShortURLFileDto, error) {
+	memoryStorage := make(map[string]model.ShortURLFileDto)
 	for {
-		var dto model.ShortURLDto
+		var dto model.ShortURLFileDto
 		err := decoder.Decode(&dto)
 		if err != nil {
 			if err == io.EOF {

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -13,8 +14,8 @@ type MockRepository struct {
 	mock.Mock
 }
 
-func (m *MockRepository) Save(ctx context.Context, id string, url string) error {
-	args := m.Called(ctx, id, url)
+func (m *MockRepository) Save(ctx context.Context, url model.URL) error {
+	args := m.Called(ctx, url)
 	return args.Error(0)
 }
 
@@ -35,11 +36,9 @@ func (m *MockRepository) Close() error {
 
 func TestGenerateShortURLPart(t *testing.T) {
 	mockPositiveRepo := new(MockRepository)
-	mockPositiveRepo.On("Save", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
-		Return(nil)
+	mockPositiveRepo.On("Save", mock.Anything, mock.Anything).Return(nil)
 	mockCollisionRepo := new(MockRepository)
-	mockCollisionRepo.On("Save", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
-		Return(repository.ErrConflict)
+	mockCollisionRepo.On("Save", mock.Anything, mock.Anything).Return(repository.ErrConflict)
 	tests := []struct {
 		name    string
 		storage repository.Repository

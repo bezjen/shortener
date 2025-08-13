@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"github.com/bezjen/shortener/internal/model"
 	"testing"
 )
 
@@ -22,7 +23,7 @@ func TestInMemoryRepositorySuccess(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(context.TODO(), tt.shortURL, tt.originalURL)
+			err := repo.Save(context.TODO(), *model.NewURL(tt.shortURL, tt.originalURL))
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
@@ -53,11 +54,11 @@ func TestInMemoryRepositoryErrConflict(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(context.TODO(), tt.shortURL, tt.originalURL)
+			err := repo.Save(context.TODO(), *model.NewURL(tt.shortURL, tt.originalURL))
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.Save(context.TODO(), tt.shortURL, tt.originalURL)
+			err = repo.Save(context.TODO(), *model.NewURL(tt.shortURL, tt.originalURL))
 			if !errors.Is(err, ErrConflict) {
 				t.Errorf("got %v, want %v", err, ErrConflict)
 			}

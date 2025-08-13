@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
 	"math/big"
 )
@@ -38,7 +39,7 @@ func (u *URLShortener) GenerateShortURLPart(ctx context.Context, url string) (st
 		if err != nil {
 			return "", err
 		}
-		err = u.storage.Save(ctx, shortURL, url)
+		err = u.storage.Save(ctx, *model.NewURL(shortURL, url))
 		if err != nil {
 			if errors.Is(err, repository.ErrConflict) {
 				continue
