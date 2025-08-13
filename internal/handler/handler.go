@@ -137,6 +137,7 @@ func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r
 		return
 	}
 
+	var response []model.ShortenBatchResponseItem
 	for _, shortURL := range shortURLs {
 		fullShortURL, err := url.JoinPath(h.cfg.BaseURL, shortURL.ShortURL)
 		if err != nil {
@@ -148,10 +149,10 @@ func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r
 			)
 			h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		}
-		shortURL.ShortURL = fullShortURL
+		response = append(response, *model.NewShortenBatchResponseItem(shortURL.CorrelationID, fullShortURL))
 	}
 
-	h.writeJSONBatchResponse(rw, http.StatusCreated, shortURLs)
+	h.writeJSONBatchResponse(rw, http.StatusCreated, response)
 }
 
 func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, r *http.Request) {

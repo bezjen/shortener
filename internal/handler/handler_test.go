@@ -225,7 +225,7 @@ func TestHandlePostShortURLBatchJSON(t *testing.T) {
 	mockShortener.On("GenerateShortURLPartBatch", mock.Anything, []model.ShortenBatchRequestItem{
 		*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
 	}).Return([]model.ShortenBatchResponseItem{
-		*model.NewShortenBatchResponseItem("123", "http://localhost:8080/qwerty12"),
+		*model.NewShortenBatchResponseItem("123", "qwerty12"),
 	}, nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
