@@ -13,11 +13,13 @@ func InitDB(logger *logger.Logger, cfg config.Config) (repository.Repository, er
 			return nil, err
 		}
 		return repoDB, nil
-	} else {
+	} else if cfg.FileStoragePath != "" {
 		repoFile, err := repository.NewFileRepository(cfg)
 		if err != nil {
 			return nil, err
 		}
 		return repoFile, nil
+	} else {
+		return repository.NewInMemoryRepository(), nil
 	}
 }
