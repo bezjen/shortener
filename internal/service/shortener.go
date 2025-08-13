@@ -19,6 +19,8 @@ var ErrGenerate = errors.New("failed to generate short url")
 
 type Shortener interface {
 	GenerateShortURLPart(ctx context.Context, url string) (string, error)
+	GenerateShortURLPartBatch(ctx context.Context,
+		urls []model.ShortenBatchRequestItem) ([]model.ShortenBatchResponseItem, error)
 	GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error)
 	PingRepository(ctx context.Context) error
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/logger"
+	"github.com/bezjen/shortener/internal/model"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -22,6 +23,13 @@ type MockShortener struct {
 func (m *MockShortener) GenerateShortURLPart(ctx context.Context, url string) (string, error) {
 	args := m.Called(ctx, url)
 	return args.String(0), args.Error(1)
+}
+
+func (m *MockShortener) GenerateShortURLPartBatch(ctx context.Context,
+	urls []model.ShortenBatchRequestItem,
+) ([]model.ShortenBatchResponseItem, error) {
+	args := m.Called(ctx, urls)
+	return args.Get(0).([]model.ShortenBatchResponseItem), args.Error(1)
 }
 
 func (m *MockShortener) GetURLByShortURLPart(ctx context.Context, id string) (string, error) {
@@ -199,6 +207,66 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 			rr := httptest.NewRecorder()
 
 			h.HandlePostShortURLJSON(rr, req)
+			res := rr.Result()
+			defer res.Body.Close()
+			resBody, _ := io.ReadAll(res.Body)
+			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
+			contentType := res.Header.Get("Content-Type")
+			assert.True(t, strings.HasPrefix(contentType, "application/json"), "Content-Type didn't match expected")
+			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
+		})
+	}
+}
+
+func TestHandlePostShortURLBatchJSON(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	mockShortener := new(MockShortener)
+	mockShortener.On("GenerateShortURLPartBatch", mock.Anything, []model.ShortenBatchRequestItem{
+		*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
+	}).Return([]model.ShortenBatchResponseItem{
+		*model.NewShortenBatchResponseItem("123", "http://localhost:8080/qwerty12"),
+	}, nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+
+	tests := []struct {
+		name         string
+		contentType  string
+		body         string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Simple positive case",
+			contentType:  "application/json",
+			body:         `[{"correlation_id":"123","original_url":"https://practicum.yandex.ru/"}]`,
+			expectedCode: http.StatusCreated,
+			expectedBody: `[{"correlation_id":"123","short_url":"http://localhost:8080/qwerty12"}]` + "\n",
+		},
+		{
+			name:         "Incorrect OriginalURL",
+			contentType:  "application/json",
+			body:         `incorrect_JSON`,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"incorrect json"}` + "\n",
+		},
+		{
+			name:         "Incorrect OriginalURL",
+			contentType:  "application/json",
+			body:         `[{"correlation_id":"123","original_url":"incorrect_URL"}]`,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"incorrect url incorrect_URL"}` + "\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/qwerty12", bytes.NewBufferString(tt.body))
+			if tt.contentType != "" {
+				req.Header.Set("Content-Type", tt.contentType)
+			}
+			rr := httptest.NewRecorder()
+
+			h.HandlePostShortURLBatchJSON(rr, req)
 			res := rr.Result()
 			defer res.Body.Close()
 			resBody, _ := io.ReadAll(res.Body)

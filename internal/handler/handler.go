@@ -84,11 +84,11 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 	defer r.Body.Close()
 	var request model.ShortenJSONRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		h.writeJSONErrorResponse(rw, http.StatusBadRequest, "incorrect json")
+		h.writeShortenJSONErrorResponse(rw, http.StatusBadRequest, "incorrect json")
 		return
 	}
 	if _, err := url.ParseRequestURI(request.URL); err != nil {
-		h.writeJSONErrorResponse(rw, http.StatusBadRequest, "incorrect url")
+		h.writeShortenJSONErrorResponse(rw, http.StatusBadRequest, "incorrect url")
 		return
 	}
 	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), request.URL)
@@ -97,7 +97,7 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 			zap.Error(err),
 			zap.String("originalURL", request.URL),
 		)
-		h.writeJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 
@@ -108,9 +108,50 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 			zap.String("baseURL", h.cfg.BaseURL),
 			zap.String("shortURL", shortURL),
 		)
-		h.writeJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
-	h.writeJSONSuccessResponse(rw, http.StatusCreated, fullShortURL)
+	h.writeShortenJSONSuccessResponse(rw, http.StatusCreated, fullShortURL)
+}
+
+func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+
+	defer r.Body.Close()
+	var request []model.ShortenBatchRequestItem
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		h.writeShortenJSONErrorResponse(rw, http.StatusBadRequest, "incorrect json")
+		return
+	}
+	for _, requestItem := range request {
+		if _, err := url.ParseRequestURI(requestItem.OriginalURL); err != nil {
+			h.writeShortenJSONErrorResponse(rw, http.StatusBadRequest, "incorrect url "+requestItem.OriginalURL)
+			return
+		}
+	}
+	shortURLs, err := h.shortener.GenerateShortURLPartBatch(r.Context(), request)
+	if err != nil {
+		h.logger.Error("Failed to generate short OriginalURL",
+			zap.Error(err),
+		)
+		h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	for _, shortURL := range shortURLs {
+		fullShortURL, err := url.JoinPath(h.cfg.BaseURL, shortURL.ShortURL)
+		if err != nil {
+			h.logger.Error("Failed to generate full short OriginalURL",
+				zap.Error(err),
+				zap.String("baseURL", h.cfg.BaseURL),
+				zap.String("shortURL", shortURL.ShortURL),
+				zap.String("correlationID", shortURL.CorrelationID),
+			)
+			h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		}
+		shortURL.ShortURL = fullShortURL
+	}
+
+	h.writeJSONBatchResponse(rw, http.StatusCreated, shortURLs)
 }
 
 func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, r *http.Request) {
@@ -126,15 +167,26 @@ func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, r *http.
 	rw.WriteHeader(http.StatusOK)
 }
 
-func (h *ShortenerHandler) writeJSONSuccessResponse(rw http.ResponseWriter, statusCode int, shortURL string) {
+func (h *ShortenerHandler) writeShortenJSONSuccessResponse(rw http.ResponseWriter, statusCode int, shortURL string) {
 	h.writeJSONResponse(rw, statusCode, model.ShortenJSONResponse{ShortURL: shortURL})
 }
 
-func (h *ShortenerHandler) writeJSONErrorResponse(rw http.ResponseWriter, statusCode int, error string) {
+func (h *ShortenerHandler) writeShortenJSONErrorResponse(rw http.ResponseWriter, statusCode int, error string) {
 	h.writeJSONResponse(rw, statusCode, model.ShortenJSONResponse{Error: error})
 }
 
 func (h *ShortenerHandler) writeJSONResponse(rw http.ResponseWriter, statusCode int, response model.ShortenJSONResponse) {
+	rw.WriteHeader(statusCode)
+	err := json.NewEncoder(rw).Encode(response)
+	if err != nil {
+		h.logger.Error("Failed to encode error response", zap.Error(err))
+		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func (h *ShortenerHandler) writeJSONBatchResponse(rw http.ResponseWriter,
+	statusCode int, response []model.ShortenBatchResponseItem,
+) {
 	rw.WriteHeader(statusCode)
 	err := json.NewEncoder(rw).Encode(response)
 	if err != nil {
