@@ -1,0 +1,1 @@
+drop index if exists idx_short_url_original_url;

@@ -3,7 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"github.com/bezjen/shortener/internal/model"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -25,6 +28,13 @@ func (p *PostgresRepository) Save(ctx context.Context, url model.URL) error {
 	_, err := p.db.ExecContext(ctx,
 		"insert into t_short_url(short_url, original_url) values ($1, $2)", url.ShortURL, url.OriginalURL)
 	if err != nil {
+		if isUniqueViolation(err) {
+			uniqueErr, err := p.newURLExistsError(ctx, url.OriginalURL)
+			if err != nil {
+				return err
+			}
+			return uniqueErr
+		}
 		return err
 	}
 	return nil
@@ -68,4 +78,44 @@ func (p *PostgresRepository) Ping(ctx context.Context) error {
 
 func (p *PostgresRepository) Close() error {
 	return p.db.Close()
+}
+
+func (p *PostgresRepository) newURLExistsError(ctx context.Context, originalURL string) (*ErrURLConflict, error) {
+	var shortURL string
+	row := p.db.QueryRowContext(ctx, "select short_url from t_short_url where original_url = $1;", originalURL)
+	err := row.Scan(&shortURL)
+	if err != nil {
+		return nil, err
+	}
+	return &ErrURLConflict{ShortURL: shortURL, Err: "Original URL already exists"}, nil
+}
+
+func (p *PostgresRepository) getShortURLByOriginalURL(ctx context.Context, originalURL string) (string, error) {
+	row := p.db.QueryRowContext(ctx, "select short_url from t_short_url where original_url = $1", originalURL)
+	var shortUrl string
+	err := row.Scan(&shortUrl)
+	if err != nil {
+		return "", err
+	}
+	return shortUrl, nil
+}
+
+func isUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == pgerrcode.UniqueViolation
+	}
+	return false
+}
+
+type ErrURLConflict struct {
+	ShortURL string
+	Err      string
+}
+
+func (err *ErrURLConflict) Error() string {
+	return err.Err
 }

@@ -2,9 +2,11 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/model"
+	"github.com/bezjen/shortener/internal/repository"
 	"github.com/bezjen/shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -44,6 +46,15 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 	}
 	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), bodyString)
 	if err != nil {
+		var uniqueUrlErr *repository.ErrURLConflict
+		if errors.As(err, &uniqueUrlErr) {
+			resultURL := h.cfg.BaseURL + "/" + uniqueUrlErr.ShortURL
+			rw.Header().Set("Content-Type", "text/plain") // TODO: remove duplication
+			rw.WriteHeader(http.StatusConflict)
+			rw.Write([]byte(resultURL))
+			return
+		}
+
 		h.logger.Error("Failed to generate short OriginalURL",
 			zap.Error(err),
 			zap.String("bodyString", bodyString),
@@ -93,6 +104,22 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 	}
 	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), request.URL)
 	if err != nil {
+		var uniqueUrlErr *repository.ErrURLConflict
+		if errors.As(err, &uniqueUrlErr) {
+			fullShortURL, err := url.JoinPath(h.cfg.BaseURL, uniqueUrlErr.ShortURL) // TODO: remove duplication
+			if err != nil {
+				h.logger.Error("Failed to generate full short OriginalURL",
+					zap.Error(err),
+					zap.String("baseURL", h.cfg.BaseURL),
+					zap.String("shortURL", shortURL),
+				)
+				h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+				return
+			}
+			h.writeShortenJSONSuccessResponse(rw, http.StatusConflict, fullShortURL)
+			return
+		}
+
 		h.logger.Error("Failed to generate short OriginalURL",
 			zap.Error(err),
 			zap.String("originalURL", request.URL),
