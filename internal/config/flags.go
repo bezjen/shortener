@@ -20,7 +20,7 @@ func ParseConfig() {
 	flagBaseURL := flag.String("b", "http://localhost:8080", "address and port of tiny url")
 	flagLogLevel := flag.String("l", "info", "log level")
 	flagFileStoragePath := flag.String("f", "", "path to file with data")
-	flagDatabaseDSN := flag.String("d", "", "postgres data source name in format `host=%s user=%s password=%s dbname=%s`")
+	flagDatabaseDSN := flag.String("d", "", "postgres data source name in format `postgres://username:password@host:port/database_name?sslmode=disable`")
 	flag.Parse()
 
 	addr, addrExists := os.LookupEnv("SERVER_ADDRESS")

@@ -6,6 +6,8 @@ import (
 	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/repository"
 	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 func InitDB(logger *logger.Logger, cfg config.Config) (repository.Repository, error) {
