@@ -122,6 +122,8 @@ func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, _ *http.
 		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	rw.WriteHeader(http.StatusOK)
 }
 
 func (h *ShortenerHandler) writeJSONSuccessResponse(rw http.ResponseWriter, statusCode int, shortURL string) {

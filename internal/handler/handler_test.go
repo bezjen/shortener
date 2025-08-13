@@ -29,6 +29,11 @@ func (m *MockShortener) GetURLByShortURLPart(id string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockShortener) PingRepository() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
 func testConfig() config.Config {
 	return config.Config{
 		ServerAddr:      "localhost:8080",
@@ -201,6 +206,34 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 			contentType := res.Header.Get("Content-Type")
 			assert.True(t, strings.HasPrefix(contentType, "application/json"), "Content-Type didn't match expected")
 			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
+		})
+	}
+}
+
+func TestHandlePingRepository(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	mockShortener := new(MockShortener)
+	mockShortener.On("PingRepository").Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+
+	tests := []struct {
+		name         string
+		expectedCode int
+	}{
+		{
+			name:         "Simple positive case",
+			expectedCode: http.StatusOK,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+			rr := httptest.NewRecorder()
+
+			h.HandlePingRepository(rr, req)
+			res := rr.Result()
+			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
 		})
 	}
 }
