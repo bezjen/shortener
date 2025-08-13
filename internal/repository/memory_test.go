@@ -95,7 +95,7 @@ func TestInMemoryRepositoryErrConflict(t *testing.T) {
 		})
 	}
 
-	t.Run("Get not-existed URL (ErrNotFound)", func(t *testing.T) {
+	t.Run("Get not-existed OriginalURL (ErrNotFound)", func(t *testing.T) {
 		_, err := repo.GetByShortURL(context.TODO(), "non-existent")
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("got %v, want %v", err, ErrNotFound)
@@ -130,7 +130,7 @@ func TestInMemoryRepositorySaveBatchErrConflict(t *testing.T) {
 		})
 	}
 
-	t.Run("Get not-existed URL (ErrNotFound)", func(t *testing.T) {
+	t.Run("Get not-existed OriginalURL (ErrNotFound)", func(t *testing.T) {
 		_, err := repo.GetByShortURL(context.TODO(), "non-existent")
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("got %v, want %v", err, ErrNotFound)
@@ -141,7 +141,7 @@ func TestInMemoryRepositorySaveBatchErrConflict(t *testing.T) {
 func TestInMemoryRepositoryErrNotFound(t *testing.T) {
 	repo := NewInMemoryRepository()
 
-	t.Run("Get not-existed URL (ErrNotFound)", func(t *testing.T) {
+	t.Run("Get not-existed OriginalURL (ErrNotFound)", func(t *testing.T) {
 		_, err := repo.GetByShortURL(context.TODO(), "non-existent")
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("got %v, want %v", err, ErrNotFound)

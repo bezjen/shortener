@@ -55,14 +55,12 @@ func TestGenerateShortURLPart(t *testing.T) {
 			name:    "Simple positive case",
 			storage: mockPositiveRepo,
 			url:     "https://practicum.yandex.ru/",
-			want:    "result12",
 			wantErr: nil,
 		},
 		{
 			name:    "Too many collisions case",
 			storage: mockCollisionRepo,
 			url:     "https://practicum.yandex.ru/",
-			want:    "",
 			wantErr: ErrGenerate,
 		},
 	}
@@ -79,6 +77,52 @@ func TestGenerateShortURLPart(t *testing.T) {
 				return
 			}
 			assert.Equal(t, 8, len(shortURL))
+		})
+	}
+}
+
+func TestGenerateShortURLPartBatch(t *testing.T) {
+	mockPositiveRepo := new(MockRepository)
+	mockPositiveRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(nil)
+	mockCollisionRepo := new(MockRepository)
+	mockCollisionRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(repository.ErrConflict)
+	tests := []struct {
+		name    string
+		storage repository.Repository
+		urls    []model.ShortenBatchRequestItem
+		wantErr error
+	}{
+		{
+			name:    "Simple positive case",
+			storage: mockPositiveRepo,
+			urls: []model.ShortenBatchRequestItem{
+				*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
+				*model.NewShortenBatchRequestItem("456", "https://practicum.yandex.ru/"),
+			},
+			wantErr: nil,
+		},
+		{
+			name:    "Too many collisions case",
+			storage: mockCollisionRepo,
+			urls: []model.ShortenBatchRequestItem{
+				*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
+			},
+			wantErr: ErrGenerate,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u := &URLShortener{
+				storage: tt.storage,
+			}
+			shortURL, err := u.GenerateShortURLPartBatch(context.TODO(), tt.urls)
+			if err != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)
+				}
+				return
+			}
+			assert.Equal(t, 2, len(shortURL))
 		})
 	}
 }

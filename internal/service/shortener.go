@@ -51,6 +51,32 @@ func (u *URLShortener) GenerateShortURLPart(ctx context.Context, url string) (st
 	return "", ErrGenerate
 }
 
+func (u *URLShortener) GenerateShortURLPartBatch(ctx context.Context,
+	urls []model.ShortenBatchRequestItem,
+) ([]model.ShortenBatchResponseItem, error) {
+	for i := 0; i < maxAttemptsCount; i++ {
+		var generatedURLs []model.URL
+		var response []model.ShortenBatchResponseItem
+		for _, url := range urls {
+			shortURL, err := generateRandomString(shortURLLength)
+			if err != nil {
+				return nil, err
+			}
+			generatedURLs = append(generatedURLs, *model.NewURL(shortURL, url.OriginalURL))
+			response = append(response, *model.NewShortenBatchResponseItem(url.CorrelationID, shortURL))
+		}
+		err := u.storage.SaveBatch(ctx, generatedURLs)
+		if err != nil {
+			if errors.Is(err, repository.ErrConflict) {
+				continue
+			}
+			return nil, err
+		}
+		return response, nil
+	}
+	return nil, ErrGenerate
+}
+
 func (u *URLShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error) {
 	resultURL, err := u.storage.GetByShortURL(ctx, shortURLPart)
 	if err != nil {
