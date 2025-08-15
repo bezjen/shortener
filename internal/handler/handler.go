@@ -50,6 +50,7 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 		if errors.As(err, &uniqueURLErr) {
 			resultURL, err := url.JoinPath(h.cfg.BaseURL, uniqueURLErr.ShortURL)
 			if err != nil {
+				h.logger.Error("Failed to build result url", zap.Error(err))
 				http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
@@ -69,6 +70,7 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 
 	resultURL, err := url.JoinPath(h.cfg.BaseURL, shortURL)
 	if err != nil {
+		h.logger.Error("Failed to build result url", zap.Error(err))
 		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
