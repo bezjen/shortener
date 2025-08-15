@@ -1,3 +1,4 @@
+//go:generate mockery --name=Shortener --output=../mocks --case=underscore
 package service
 
 import (
