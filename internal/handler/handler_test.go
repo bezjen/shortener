@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/logger"
+	"github.com/bezjen/shortener/internal/mocks"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -15,32 +16,6 @@ import (
 	"strings"
 	"testing"
 )
-
-type MockShortener struct {
-	mock.Mock
-}
-
-func (m *MockShortener) GenerateShortURLPart(ctx context.Context, url string) (string, error) {
-	args := m.Called(ctx, url)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockShortener) GenerateShortURLPartBatch(ctx context.Context,
-	urls []model.ShortenBatchRequestItem,
-) ([]model.ShortenBatchResponseItem, error) {
-	args := m.Called(ctx, urls)
-	return args.Get(0).([]model.ShortenBatchResponseItem), args.Error(1)
-}
-
-func (m *MockShortener) GetURLByShortURLPart(ctx context.Context, id string) (string, error) {
-	args := m.Called(ctx, id)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockShortener) PingRepository(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
 
 func testConfig() config.Config {
 	return config.Config{
@@ -54,7 +29,7 @@ func testConfig() config.Config {
 func TestHandleGetShortURLRedirect(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
-	mockShortener := new(MockShortener)
+	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty12").
 		Return("https://practicum.yandex.ru/", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
@@ -114,7 +89,7 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 func TestHandlePostShortURLTextPlain(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
-	mockShortener := new(MockShortener)
+	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GenerateShortURLPart", mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
@@ -164,7 +139,7 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 func TestHandlePostShortURLJSON(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
-	mockShortener := new(MockShortener)
+	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GenerateShortURLPart", mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
@@ -221,7 +196,7 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 func TestHandlePostShortURLBatchJSON(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
-	mockShortener := new(MockShortener)
+	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GenerateShortURLPartBatch", mock.Anything, []model.ShortenBatchRequestItem{
 		*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
 	}).Return([]model.ShortenBatchResponseItem{
@@ -281,7 +256,7 @@ func TestHandlePostShortURLBatchJSON(t *testing.T) {
 func TestHandlePingRepository(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
-	mockShortener := new(MockShortener)
+	mockShortener := new(mocks.Shortener)
 	mockShortener.On("PingRepository", mock.Anything).Return(nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 

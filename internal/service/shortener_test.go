@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"github.com/bezjen/shortener/internal/mocks"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
 	"github.com/stretchr/testify/assert"
@@ -10,39 +11,10 @@ import (
 	"testing"
 )
 
-type MockRepository struct {
-	mock.Mock
-}
-
-func (m *MockRepository) Save(ctx context.Context, url model.URL) error {
-	args := m.Called(ctx, url)
-	return args.Error(0)
-}
-
-func (m *MockRepository) SaveBatch(ctx context.Context, url []model.URL) error {
-	args := m.Called(ctx, url)
-	return args.Error(0)
-}
-
-func (m *MockRepository) GetByShortURL(ctx context.Context, id string) (string, error) {
-	args := m.Called(ctx, id)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockRepository) Ping(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-func (m *MockRepository) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
 func TestGenerateShortURLPart(t *testing.T) {
-	mockPositiveRepo := new(MockRepository)
+	mockPositiveRepo := new(mocks.Repository)
 	mockPositiveRepo.On("Save", mock.Anything, mock.Anything).Return(nil)
-	mockCollisionRepo := new(MockRepository)
+	mockCollisionRepo := new(mocks.Repository)
 	mockCollisionRepo.On("Save", mock.Anything, mock.Anything).Return(repository.ErrShortURLConflict)
 	tests := []struct {
 		name    string
@@ -82,9 +54,9 @@ func TestGenerateShortURLPart(t *testing.T) {
 }
 
 func TestGenerateShortURLPartBatch(t *testing.T) {
-	mockPositiveRepo := new(MockRepository)
+	mockPositiveRepo := new(mocks.Repository)
 	mockPositiveRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(nil)
-	mockCollisionRepo := new(MockRepository)
+	mockCollisionRepo := new(mocks.Repository)
 	mockCollisionRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(repository.ErrShortURLConflict)
 	tests := []struct {
 		name    string
@@ -128,10 +100,10 @@ func TestGenerateShortURLPartBatch(t *testing.T) {
 }
 
 func TestGetURLByShortURLPart(t *testing.T) {
-	mockRepoPositive := new(MockRepository)
+	mockRepoPositive := new(mocks.Repository)
 	mockRepoPositive.On("GetByShortURL", mock.Anything, "qwerty12").
 		Return("https://practicum.yandex.ru/", nil)
-	mockRepoNotFound := new(MockRepository)
+	mockRepoNotFound := new(mocks.Repository)
 	mockRepoNotFound.On("GetByShortURL", mock.Anything, "qwerty12").
 		Return("", repository.ErrNotFound)
 
