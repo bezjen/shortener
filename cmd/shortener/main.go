@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/bezjen/shortener/internal/config"
+	"github.com/bezjen/shortener/internal/config/db"
 	"github.com/bezjen/shortener/internal/handler"
 	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/repository"
@@ -23,11 +24,17 @@ func main() {
 		return
 	}
 
-	storage, err := repository.NewFileRepository(cfg)
+	storage, err := db.InitDB(cfg)
 	if err != nil {
 		log.Printf("Error during storage initialization: %v", err)
 		return
 	}
+	defer func(storage repository.Repository) {
+		err := storage.Close()
+		if err != nil {
+			log.Printf("Error during storage close cleanly: %v", err)
+		}
+	}(storage)
 	urlShortener := service.NewURLShortener(storage)
 	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener)
 	shortenerRouter := router.NewRouter(shortenerLogger, *shortenerHandler)

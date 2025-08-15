@@ -1,34 +1,21 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"github.com/bezjen/shortener/internal/mocks"
+	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
-type MockRepository struct {
-	mock.Mock
-}
-
-func (m *MockRepository) Save(id string, url string) error {
-	args := m.Called(id, url)
-	return args.Error(0)
-}
-
-func (m *MockRepository) GetByShortURL(id string) (string, error) {
-	args := m.Called(id)
-	return args.String(0), args.Error(1)
-}
-
 func TestGenerateShortURLPart(t *testing.T) {
-	mockPositiveRepo := new(MockRepository)
-	mockPositiveRepo.On("Save", mock.Anything, "https://practicum.yandex.ru/").
-		Return(nil)
-	mockCollisionRepo := new(MockRepository)
-	mockCollisionRepo.On("Save", mock.Anything, "https://practicum.yandex.ru/").
-		Return(repository.ErrConflict)
+	mockPositiveRepo := new(mocks.Repository)
+	mockPositiveRepo.On("Save", mock.Anything, mock.Anything).Return(nil)
+	mockCollisionRepo := new(mocks.Repository)
+	mockCollisionRepo.On("Save", mock.Anything, mock.Anything).Return(repository.ErrShortURLConflict)
 	tests := []struct {
 		name    string
 		storage repository.Repository
@@ -40,14 +27,12 @@ func TestGenerateShortURLPart(t *testing.T) {
 			name:    "Simple positive case",
 			storage: mockPositiveRepo,
 			url:     "https://practicum.yandex.ru/",
-			want:    "result12",
 			wantErr: nil,
 		},
 		{
 			name:    "Too many collisions case",
 			storage: mockCollisionRepo,
 			url:     "https://practicum.yandex.ru/",
-			want:    "",
 			wantErr: ErrGenerate,
 		},
 	}
@@ -56,7 +41,7 @@ func TestGenerateShortURLPart(t *testing.T) {
 			u := &URLShortener{
 				storage: tt.storage,
 			}
-			shortURL, err := u.GenerateShortURLPart(tt.url)
+			shortURL, err := u.GenerateShortURLPart(context.TODO(), tt.url)
 			if err != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)
@@ -68,12 +53,58 @@ func TestGenerateShortURLPart(t *testing.T) {
 	}
 }
 
+func TestGenerateShortURLPartBatch(t *testing.T) {
+	mockPositiveRepo := new(mocks.Repository)
+	mockPositiveRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(nil)
+	mockCollisionRepo := new(mocks.Repository)
+	mockCollisionRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(repository.ErrShortURLConflict)
+	tests := []struct {
+		name    string
+		storage repository.Repository
+		urls    []model.ShortenBatchRequestItem
+		wantErr error
+	}{
+		{
+			name:    "Simple positive case",
+			storage: mockPositiveRepo,
+			urls: []model.ShortenBatchRequestItem{
+				*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
+				*model.NewShortenBatchRequestItem("456", "https://practicum.yandex.ru/"),
+			},
+			wantErr: nil,
+		},
+		{
+			name:    "Too many collisions case",
+			storage: mockCollisionRepo,
+			urls: []model.ShortenBatchRequestItem{
+				*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
+			},
+			wantErr: ErrGenerate,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u := &URLShortener{
+				storage: tt.storage,
+			}
+			shortURL, err := u.GenerateShortURLPartBatch(context.TODO(), tt.urls)
+			if err != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)
+				}
+				return
+			}
+			assert.Equal(t, 2, len(shortURL))
+		})
+	}
+}
+
 func TestGetURLByShortURLPart(t *testing.T) {
-	mockRepoPositive := new(MockRepository)
-	mockRepoPositive.On("GetByShortURL", "qwerty12").
+	mockRepoPositive := new(mocks.Repository)
+	mockRepoPositive.On("GetByShortURL", mock.Anything, "qwerty12").
 		Return("https://practicum.yandex.ru/", nil)
-	mockRepoNotFound := new(MockRepository)
-	mockRepoNotFound.On("GetByShortURL", "qwerty12").
+	mockRepoNotFound := new(mocks.Repository)
+	mockRepoNotFound.On("GetByShortURL", mock.Anything, "qwerty12").
 		Return("", repository.ErrNotFound)
 
 	tests := []struct {
@@ -103,7 +134,7 @@ func TestGetURLByShortURLPart(t *testing.T) {
 			u := &URLShortener{
 				storage: tt.storage,
 			}
-			got, err := u.GetURLByShortURLPart(tt.shortURLPart)
+			got, err := u.GetURLByShortURLPart(context.TODO(), tt.shortURLPart)
 			if err != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)

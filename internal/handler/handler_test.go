@@ -5,6 +5,8 @@ import (
 	"context"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/logger"
+	"github.com/bezjen/shortener/internal/mocks"
+	"github.com/bezjen/shortener/internal/model"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -14,20 +16,6 @@ import (
 	"strings"
 	"testing"
 )
-
-type MockShortener struct {
-	mock.Mock
-}
-
-func (m *MockShortener) GenerateShortURLPart(url string) (string, error) {
-	args := m.Called(url)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockShortener) GetURLByShortURLPart(id string) (string, error) {
-	args := m.Called(id)
-	return args.String(0), args.Error(1)
-}
 
 func testConfig() config.Config {
 	return config.Config{
@@ -41,8 +29,8 @@ func testConfig() config.Config {
 func TestHandleGetShortURLRedirect(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
-	mockShortener := new(MockShortener)
-	mockShortener.On("GetURLByShortURLPart", "qwerty12").
+	mockShortener := new(mocks.Shortener)
+	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty12").
 		Return("https://practicum.yandex.ru/", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
@@ -101,8 +89,8 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 func TestHandlePostShortURLTextPlain(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
-	mockShortener := new(MockShortener)
-	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
+	mockShortener := new(mocks.Shortener)
+	mockShortener.On("GenerateShortURLPart", mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
@@ -121,7 +109,7 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 			expectedBody: "http://localhost:8080/qwerty12",
 		},
 		{
-			name:         "Incorrect URL",
+			name:         "Incorrect OriginalURL",
 			contentType:  "text/plain",
 			body:         "incorrect_URL",
 			expectedCode: http.StatusBadRequest,
@@ -151,8 +139,8 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 func TestHandlePostShortURLJSON(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
-	mockShortener := new(MockShortener)
-	mockShortener.On("GenerateShortURLPart", "https://practicum.yandex.ru/").
+	mockShortener := new(mocks.Shortener)
+	mockShortener.On("GenerateShortURLPart", mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
@@ -171,14 +159,14 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 			expectedBody: `{"result":"http://localhost:8080/qwerty12"}` + "\n",
 		},
 		{
-			name:         "Incorrect URL",
+			name:         "Incorrect OriginalURL",
 			contentType:  "application/json",
 			body:         `incorrect_JSON`,
 			expectedCode: http.StatusBadRequest,
 			expectedBody: `{"error":"incorrect json"}` + "\n",
 		},
 		{
-			name:         "Incorrect URL",
+			name:         "Incorrect OriginalURL",
 			contentType:  "application/json",
 			body:         `{"url":"incorrect_URL"}`,
 			expectedCode: http.StatusBadRequest,
@@ -201,6 +189,95 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 			contentType := res.Header.Get("Content-Type")
 			assert.True(t, strings.HasPrefix(contentType, "application/json"), "Content-Type didn't match expected")
 			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
+		})
+	}
+}
+
+func TestHandlePostShortURLBatchJSON(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	mockShortener := new(mocks.Shortener)
+	mockShortener.On("GenerateShortURLPartBatch", mock.Anything, []model.ShortenBatchRequestItem{
+		*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
+	}).Return([]model.ShortenBatchResponseItem{
+		*model.NewShortenBatchResponseItem("123", "qwerty12"),
+	}, nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+
+	tests := []struct {
+		name         string
+		contentType  string
+		body         string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Simple positive case",
+			contentType:  "application/json",
+			body:         `[{"correlation_id":"123","original_url":"https://practicum.yandex.ru/"}]`,
+			expectedCode: http.StatusCreated,
+			expectedBody: `[{"correlation_id":"123","short_url":"http://localhost:8080/qwerty12"}]` + "\n",
+		},
+		{
+			name:         "Incorrect OriginalURL",
+			contentType:  "application/json",
+			body:         `incorrect_JSON`,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"incorrect json"}` + "\n",
+		},
+		{
+			name:         "Incorrect OriginalURL",
+			contentType:  "application/json",
+			body:         `[{"correlation_id":"123","original_url":"incorrect_URL"}]`,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"incorrect url incorrect_URL"}` + "\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/qwerty12", bytes.NewBufferString(tt.body))
+			if tt.contentType != "" {
+				req.Header.Set("Content-Type", tt.contentType)
+			}
+			rr := httptest.NewRecorder()
+
+			h.HandlePostShortURLBatchJSON(rr, req)
+			res := rr.Result()
+			defer res.Body.Close()
+			resBody, _ := io.ReadAll(res.Body)
+			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
+			contentType := res.Header.Get("Content-Type")
+			assert.True(t, strings.HasPrefix(contentType, "application/json"), "Content-Type didn't match expected")
+			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
+		})
+	}
+}
+
+func TestHandlePingRepository(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	mockShortener := new(mocks.Shortener)
+	mockShortener.On("PingRepository", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+
+	tests := []struct {
+		name         string
+		expectedCode int
+	}{
+		{
+			name:         "Simple positive case",
+			expectedCode: http.StatusOK,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+			rr := httptest.NewRecorder()
+
+			h.HandlePingRepository(rr, req)
+			res := rr.Result()
+			defer res.Body.Close()
+			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
 		})
 	}
 }

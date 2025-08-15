@@ -1,8 +1,11 @@
+//go:generate mockery --name=Shortener --output=../mocks --case=underscore
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
 	"math/big"
 )
@@ -16,8 +19,11 @@ const (
 var ErrGenerate = errors.New("failed to generate short url")
 
 type Shortener interface {
-	GenerateShortURLPart(url string) (string, error)
-	GetURLByShortURLPart(shortURLPart string) (string, error)
+	GenerateShortURLPart(ctx context.Context, url string) (string, error)
+	GenerateShortURLPartBatch(ctx context.Context,
+		urls []model.ShortenBatchRequestItem) ([]model.ShortenBatchResponseItem, error)
+	GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error)
+	PingRepository(ctx context.Context) error
 }
 
 type URLShortener struct {
@@ -30,15 +36,15 @@ func NewURLShortener(storage repository.Repository) *URLShortener {
 	}
 }
 
-func (u *URLShortener) GenerateShortURLPart(url string) (string, error) {
+func (u *URLShortener) GenerateShortURLPart(ctx context.Context, url string) (string, error) {
 	for i := 0; i < maxAttemptsCount; i++ {
 		shortURL, err := generateRandomString(shortURLLength)
 		if err != nil {
 			return "", err
 		}
-		err = u.storage.Save(shortURL, url)
+		err = u.storage.Save(ctx, *model.NewURL(shortURL, url))
 		if err != nil {
-			if errors.Is(err, repository.ErrConflict) {
+			if errors.Is(err, repository.ErrShortURLConflict) {
 				continue
 			}
 			return "", err
@@ -48,12 +54,42 @@ func (u *URLShortener) GenerateShortURLPart(url string) (string, error) {
 	return "", ErrGenerate
 }
 
-func (u *URLShortener) GetURLByShortURLPart(shortURLPart string) (string, error) {
-	resultURL, err := u.storage.GetByShortURL(shortURLPart)
+func (u *URLShortener) GenerateShortURLPartBatch(ctx context.Context,
+	urls []model.ShortenBatchRequestItem,
+) ([]model.ShortenBatchResponseItem, error) {
+	for i := 0; i < maxAttemptsCount; i++ {
+		var generatedURLs []model.URL
+		var response []model.ShortenBatchResponseItem
+		for _, url := range urls {
+			shortURL, err := generateRandomString(shortURLLength)
+			if err != nil {
+				return nil, err
+			}
+			generatedURLs = append(generatedURLs, *model.NewURL(shortURL, url.OriginalURL))
+			response = append(response, *model.NewShortenBatchResponseItem(url.CorrelationID, shortURL))
+		}
+		err := u.storage.SaveBatch(ctx, generatedURLs)
+		if err != nil {
+			if errors.Is(err, repository.ErrShortURLConflict) {
+				continue
+			}
+			return nil, err
+		}
+		return response, nil
+	}
+	return nil, ErrGenerate
+}
+
+func (u *URLShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error) {
+	resultURL, err := u.storage.GetByShortURL(ctx, shortURLPart)
 	if err != nil {
 		return "", err
 	}
 	return resultURL, nil
+}
+
+func (u *URLShortener) PingRepository(ctx context.Context) error {
+	return u.storage.Ping(ctx)
 }
 
 func generateRandomString(length int) (string, error) {

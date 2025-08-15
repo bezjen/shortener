@@ -21,7 +21,8 @@ func TestParseFlags(t *testing.T) {
 				ServerAddr:      "localhost:8080",
 				BaseURL:         "http://localhost:8080",
 				LogLevel:        "info",
-				FileStoragePath: "./storage.json",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
 			},
 		},
 		{
@@ -32,7 +33,8 @@ func TestParseFlags(t *testing.T) {
 				ServerAddr:      "localhost:9090",
 				BaseURL:         "https://shortener",
 				LogLevel:        "info",
-				FileStoragePath: "./storage.json",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
 			},
 		},
 		{
@@ -46,7 +48,8 @@ func TestParseFlags(t *testing.T) {
 				ServerAddr:      "shortener:7070",
 				BaseURL:         "https://shortener",
 				LogLevel:        "info",
-				FileStoragePath: "./storage.json",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
 			},
 		},
 		{
@@ -59,7 +62,8 @@ func TestParseFlags(t *testing.T) {
 				ServerAddr:      "localhost:6060",
 				BaseURL:         "https://shortener",
 				LogLevel:        "info",
-				FileStoragePath: "./storage.json",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
 			},
 		},
 		{
@@ -73,7 +77,8 @@ func TestParseFlags(t *testing.T) {
 				ServerAddr:      "localhost:8080",
 				BaseURL:         "http://localhost",
 				LogLevel:        "info",
-				FileStoragePath: "./storage.json",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
 			},
 		},
 		{
@@ -86,7 +91,8 @@ func TestParseFlags(t *testing.T) {
 				ServerAddr:      "localhost:8080",
 				BaseURL:         "http://localhost:8080",
 				LogLevel:        "fatal",
-				FileStoragePath: "./storage.json",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
 			},
 		},
 		{
@@ -97,7 +103,8 @@ func TestParseFlags(t *testing.T) {
 				ServerAddr:      "localhost:8080",
 				BaseURL:         "http://localhost:8080",
 				LogLevel:        "fatal",
-				FileStoragePath: "./storage.json",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
 			},
 		},
 		{
@@ -111,6 +118,7 @@ func TestParseFlags(t *testing.T) {
 				BaseURL:         "http://localhost:8080",
 				LogLevel:        "info",
 				FileStoragePath: "./storage_new.json",
+				DatabaseDSN:     "",
 			},
 		},
 		{
@@ -122,6 +130,33 @@ func TestParseFlags(t *testing.T) {
 				BaseURL:         "http://localhost:8080",
 				LogLevel:        "info",
 				FileStoragePath: "./storage_new.json",
+				DatabaseDSN:     "",
+			},
+		},
+		{
+			name: "Env for data source name",
+			args: []string{"shortener.exe"},
+			env: map[string]string{
+				"DATABASE_DSN": "ds",
+			},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "ds",
+			},
+		},
+		{
+			name: "Flag for data source name",
+			args: []string{"shortener.exe", "-d=ds"},
+			env:  map[string]string{},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "ds",
 			},
 		},
 	}

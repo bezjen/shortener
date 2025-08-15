@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"github.com/bezjen/shortener/internal/config"
+	"github.com/bezjen/shortener/internal/model"
 	"os"
 	"testing"
 )
@@ -21,28 +23,26 @@ func TestFileRepositorySuccess(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name        string
-		shortURL    string
-		originalURL string
+		name string
+		url  model.URL
 	}{
 		{
-			name:        "Simple positive case",
-			shortURL:    "qwerty12",
-			originalURL: "https://practicum.yandex.ru/",
+			name: "Simple positive case",
+			url:  *model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(tt.shortURL, tt.originalURL)
+			err := repo.Save(context.TODO(), tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			result, err := repo.GetByShortURL(tt.shortURL)
+			result, err := repo.GetByShortURL(context.TODO(), tt.url.ShortURL)
 			if err != nil {
 				t.Fatalf("GetByShortURL failed: %v", err)
 			}
-			if result != tt.originalURL {
-				t.Errorf("got %q, want %q", result, tt.originalURL)
+			if result != tt.url.OriginalURL {
+				t.Errorf("got %q, want %q", result, tt.url.OriginalURL)
 			}
 		})
 	}
@@ -53,31 +53,29 @@ func TestFileRepositoryErrConflict(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name        string
-		shortURL    string
-		originalURL string
+		name string
+		url  model.URL
 	}{
 		{
-			name:        "Save the same url twice (ErrConflict)",
-			shortURL:    "qwerty12",
-			originalURL: "https://practicum.yandex.ru/",
+			name: "Save the same url twice (ErrShortURLConflict)",
+			url:  *model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(tt.shortURL, tt.originalURL)
+			err := repo.Save(context.TODO(), tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.Save(tt.shortURL, tt.originalURL)
-			if !errors.Is(err, ErrConflict) {
-				t.Errorf("got %v, want %v", err, ErrConflict)
+			err = repo.Save(context.TODO(), tt.url)
+			if !errors.Is(err, ErrShortURLConflict) {
+				t.Errorf("got %v, want %v", err, ErrShortURLConflict)
 			}
 		})
 	}
 
-	t.Run("Get not-existed URL (ErrNotFound)", func(t *testing.T) {
-		_, err := repo.GetByShortURL("non-existent")
+	t.Run("Get not-existed OriginalURL (ErrNotFound)", func(t *testing.T) {
+		_, err := repo.GetByShortURL(context.TODO(), "non-existent")
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("got %v, want %v", err, ErrNotFound)
 		}
@@ -88,8 +86,8 @@ func TestFileRepositoryErrNotFound(t *testing.T) {
 	repo, cleanup := setupFileRepository(t)
 	defer cleanup()
 
-	t.Run("Get not-existed URL (ErrNotFound)", func(t *testing.T) {
-		_, err := repo.GetByShortURL("non-existent")
+	t.Run("Get not-existed OriginalURL (ErrNotFound)", func(t *testing.T) {
+		_, err := repo.GetByShortURL(context.TODO(), "non-existent")
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("got %v, want %v", err, ErrNotFound)
 		}
