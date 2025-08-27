@@ -95,7 +95,7 @@ func TestValidateTokenError(t *testing.T) {
 		},
 		{
 			name:        "token with wrong signature",
-			tokenString: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySUQiOiJ0ZXN0LXVzZXIiLCJpc3MiOiJ1cmwtc2hvcnRlbmVyIn0.wrong-signature",
+			tokenString: "header.data.wrong-signature",
 		},
 	}
 
