@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
-	"fmt"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/config/db"
 	"github.com/bezjen/shortener/internal/handler"
@@ -38,11 +36,7 @@ func main() {
 		}
 	}(storage)
 	urlShortener := service.NewURLShortener(storage)
-	secretKey, err := generateRandomKey(32)
-	if err != nil {
-		log.Fatal("Failed to generate secret key:", err)
-	}
-	authorizer := service.NewAuthorizer(secretKey, shortenerLogger)
+	authorizer := service.NewAuthorizer(cfg.SecretKey, shortenerLogger)
 	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener)
 	shortenerRouter := router.NewRouter(shortenerLogger, authorizer, *shortenerHandler)
 
@@ -57,13 +51,4 @@ func main() {
 	}()
 
 	<-ctx.Done()
-}
-
-func generateRandomKey(length int) ([]byte, error) {
-	key := make([]byte, length)
-	_, err := rand.Read(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate random key: %w", err)
-	}
-	return key, nil
 }

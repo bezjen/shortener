@@ -1,7 +1,10 @@
 package config
 
 import (
+	"crypto/rand"
 	"flag"
+	"fmt"
+	"log"
 	"os"
 )
 
@@ -11,6 +14,7 @@ type Config struct {
 	LogLevel        string
 	FileStoragePath string
 	DatabaseDSN     string
+	SecretKey       []byte
 }
 
 var AppConfig Config
@@ -21,6 +25,7 @@ func ParseConfig() {
 	flagLogLevel := flag.String("l", "info", "log level")
 	flagFileStoragePath := flag.String("f", "", "path to file with data")
 	flagDatabaseDSN := flag.String("d", "", "postgres data source name in format `postgres://username:password@host:port/database_name?sslmode=disable`")
+	flagSecretKey := flag.String("s", "", "authorization secret key")
 	flag.Parse()
 
 	addr, addrExists := os.LookupEnv("SERVER_ADDRESS")
@@ -53,4 +58,25 @@ func ParseConfig() {
 	} else {
 		AppConfig.DatabaseDSN = *flagDatabaseDSN
 	}
+	secretKey, secretKeyExists := os.LookupEnv("SECRET_KEY")
+	if secretKeyExists {
+		AppConfig.SecretKey = []byte(secretKey)
+	} else if *flagSecretKey != "" {
+		AppConfig.SecretKey = []byte(*flagDatabaseDSN)
+	} else {
+		generatedKey, err := generateRandomKey(32)
+		if err != nil {
+			log.Fatal("Failed to generate secret key:", err)
+		}
+		AppConfig.SecretKey = generatedKey
+	}
+}
+
+func generateRandomKey(length int) ([]byte, error) {
+	key := make([]byte, length)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate random key: %w", err)
+	}
+	return key, nil
 }
