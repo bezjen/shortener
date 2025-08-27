@@ -7,9 +7,8 @@ import (
 )
 
 type GzipWriter struct {
-	rw         http.ResponseWriter
-	gw         *gzip.Writer
-	statusCode int
+	rw http.ResponseWriter
+	gw *gzip.Writer
 }
 
 func NewGzipWriter(w http.ResponseWriter) *GzipWriter {
@@ -28,7 +27,6 @@ func (w GzipWriter) Write(p []byte) (int, error) {
 }
 
 func (w GzipWriter) WriteHeader(statusCode int) {
-	w.statusCode = statusCode
 	if statusCode < http.StatusNoContent || statusCode == http.StatusConflict {
 		w.rw.Header().Set("Content-Encoding", "gzip")
 	}
@@ -36,10 +34,7 @@ func (w GzipWriter) WriteHeader(statusCode int) {
 }
 
 func (w GzipWriter) Close() error {
-	if w.statusCode < http.StatusNoContent || w.statusCode == http.StatusConflict {
-		return w.gw.Close()
-	}
-	return nil
+	return w.gw.Close()
 }
 
 type GzipReader struct {

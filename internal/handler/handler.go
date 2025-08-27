@@ -231,7 +231,7 @@ func (h *ShortenerHandler) HandleGetUserURLsJSON(rw http.ResponseWriter, r *http
 		response = append(response, *model.NewUserURLResponseItem(fullShortURL, userURL.OriginalURL))
 	}
 
-	h.writeJSONUserURLsResponse(rw, http.StatusCreated, response)
+	h.writeJSONUserURLsResponse(rw, http.StatusOK, response)
 }
 
 func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, r *http.Request) {

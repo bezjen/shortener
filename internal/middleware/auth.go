@@ -31,9 +31,27 @@ func NewAuthMiddleware(authorizer service.Authorizer, logger *logger.Logger) *Au
 func (m *AuthMiddleware) WithAuth(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var userID string
+		var err error
 
-		cookie, err := r.Cookie(CookieName)
-		if err != nil {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader != "" {
+			userID, err = m.authorizer.ValidateToken(authHeader)
+			if err != nil {
+				http.Error(w, "Invalid auth header", http.StatusUnauthorized)
+				return
+			}
+		}
+		if userID == "" {
+			cookie, cookieErr := r.Cookie(CookieName)
+			if cookieErr == nil {
+				userID, cookieErr = m.authorizer.ValidateToken(cookie.Value)
+				if cookieErr != nil {
+					http.Error(w, "Invalid cookie", http.StatusUnauthorized)
+					return
+				}
+			}
+		}
+		if userID == "" {
 			userID, err = generateNewUserID()
 			if err != nil {
 				m.logger.Error("Failed to generate new user ID", zap.Error(err))
@@ -41,12 +59,6 @@ func (m *AuthMiddleware) WithAuth(h http.Handler) http.Handler {
 				return
 			}
 			m.logger.Infoln("New user created", zap.String("userID", userID))
-		} else {
-			userID, err = m.authorizer.ValidateToken(cookie.Value)
-			if err != nil {
-				http.Error(w, "Invalid cookie", http.StatusUnauthorized)
-				return
-			}
 		}
 
 		newToken, err := m.authorizer.CreateToken(userID)
@@ -57,6 +69,7 @@ func (m *AuthMiddleware) WithAuth(h http.Handler) http.Handler {
 		}
 		updateCookie(w, newToken)
 
+		w.Header().Set("Authorization", newToken)
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})

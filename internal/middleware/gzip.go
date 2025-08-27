@@ -30,11 +30,9 @@ func (m *GzipMiddleware) WithGzipRequestDecompression(h http.Handler) http.Handl
 			return
 		}
 		defer func(gr *compress.GzipReader) {
-			err := gr.Close()
+			err = gr.Close()
 			if err != nil {
 				m.logger.Error("Failed to close gzip reader", zap.Error(err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
 			}
 		}(gr)
 		r.Body = gr
@@ -50,12 +48,12 @@ func (m *GzipMiddleware) WithGzipResponseCompression(h http.Handler) http.Handle
 		}
 
 		gw := compress.NewGzipWriter(w)
-		h.ServeHTTP(gw, r)
 		defer func(gw *compress.GzipWriter) {
 			err := gw.Close()
 			if err != nil {
 				m.logger.Error("Failed to close gzip writer", zap.Error(err))
 			}
 		}(gw)
+		h.ServeHTTP(gw, r)
 	})
 }
