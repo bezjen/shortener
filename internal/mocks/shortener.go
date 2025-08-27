@@ -14,9 +14,9 @@ type Shortener struct {
 	mock.Mock
 }
 
-// GenerateShortURLPart provides a mock function with given fields: ctx, url
-func (_m *Shortener) GenerateShortURLPart(ctx context.Context, url string) (string, error) {
-	ret := _m.Called(ctx, url)
+// GenerateShortURLPart provides a mock function with given fields: ctx, userID, url
+func (_m *Shortener) GenerateShortURLPart(ctx context.Context, userID string, url string) (string, error) {
+	ret := _m.Called(ctx, userID, url)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GenerateShortURLPart")
@@ -24,17 +24,17 @@ func (_m *Shortener) GenerateShortURLPart(ctx context.Context, url string) (stri
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
-		return rf(ctx, url)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (string, error)); ok {
+		return rf(ctx, userID, url)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
-		r0 = rf(ctx, url)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) string); ok {
+		r0 = rf(ctx, userID, url)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, url)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, userID, url)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -42,9 +42,9 @@ func (_m *Shortener) GenerateShortURLPart(ctx context.Context, url string) (stri
 	return r0, r1
 }
 
-// GenerateShortURLPartBatch provides a mock function with given fields: ctx, urls
-func (_m *Shortener) GenerateShortURLPartBatch(ctx context.Context, urls []model.ShortenBatchRequestItem) ([]model.ShortenBatchResponseItem, error) {
-	ret := _m.Called(ctx, urls)
+// GenerateShortURLPartBatch provides a mock function with given fields: ctx, userID, urls
+func (_m *Shortener) GenerateShortURLPartBatch(ctx context.Context, userID string, urls []model.ShortenBatchRequestItem) ([]model.ShortenBatchResponseItem, error) {
+	ret := _m.Called(ctx, userID, urls)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GenerateShortURLPartBatch")
@@ -52,19 +52,19 @@ func (_m *Shortener) GenerateShortURLPartBatch(ctx context.Context, urls []model
 
 	var r0 []model.ShortenBatchResponseItem
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []model.ShortenBatchRequestItem) ([]model.ShortenBatchResponseItem, error)); ok {
-		return rf(ctx, urls)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []model.ShortenBatchRequestItem) ([]model.ShortenBatchResponseItem, error)); ok {
+		return rf(ctx, userID, urls)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []model.ShortenBatchRequestItem) []model.ShortenBatchResponseItem); ok {
-		r0 = rf(ctx, urls)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []model.ShortenBatchRequestItem) []model.ShortenBatchResponseItem); ok {
+		r0 = rf(ctx, userID, urls)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]model.ShortenBatchResponseItem)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []model.ShortenBatchRequestItem) error); ok {
-		r1 = rf(ctx, urls)
+	if rf, ok := ret.Get(1).(func(context.Context, string, []model.ShortenBatchRequestItem) error); ok {
+		r1 = rf(ctx, userID, urls)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -93,6 +93,36 @@ func (_m *Shortener) GetURLByShortURLPart(ctx context.Context, shortURLPart stri
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
 		r1 = rf(ctx, shortURLPart)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetURLsByUserID provides a mock function with given fields: ctx, userID
+func (_m *Shortener) GetURLsByUserID(ctx context.Context, userID string) ([]model.URL, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetURLsByUserID")
+	}
+
+	var r0 []model.URL
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]model.URL, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []model.URL); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.URL)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, userID)
 	} else {
 		r1 = ret.Error(1)
 	}

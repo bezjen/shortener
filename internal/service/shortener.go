@@ -19,10 +19,11 @@ const (
 var ErrGenerate = errors.New("failed to generate short url")
 
 type Shortener interface {
-	GenerateShortURLPart(ctx context.Context, url string) (string, error)
-	GenerateShortURLPartBatch(ctx context.Context,
+	GenerateShortURLPart(ctx context.Context, userID string, url string) (string, error)
+	GenerateShortURLPartBatch(ctx context.Context, userID string,
 		urls []model.ShortenBatchRequestItem) ([]model.ShortenBatchResponseItem, error)
 	GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error)
+	GetURLsByUserID(ctx context.Context, userID string) ([]model.URL, error)
 	PingRepository(ctx context.Context) error
 }
 
@@ -36,13 +37,13 @@ func NewURLShortener(storage repository.Repository) *URLShortener {
 	}
 }
 
-func (u *URLShortener) GenerateShortURLPart(ctx context.Context, url string) (string, error) {
+func (u *URLShortener) GenerateShortURLPart(ctx context.Context, userID string, url string) (string, error) {
 	for i := 0; i < maxAttemptsCount; i++ {
 		shortURL, err := generateRandomString(shortURLLength)
 		if err != nil {
 			return "", err
 		}
-		err = u.storage.Save(ctx, *model.NewURL(shortURL, url))
+		err = u.storage.Save(ctx, userID, *model.NewURL(shortURL, url))
 		if err != nil {
 			if errors.Is(err, repository.ErrShortURLConflict) {
 				continue
@@ -55,6 +56,7 @@ func (u *URLShortener) GenerateShortURLPart(ctx context.Context, url string) (st
 }
 
 func (u *URLShortener) GenerateShortURLPartBatch(ctx context.Context,
+	userID string,
 	urls []model.ShortenBatchRequestItem,
 ) ([]model.ShortenBatchResponseItem, error) {
 	for i := 0; i < maxAttemptsCount; i++ {
@@ -68,7 +70,7 @@ func (u *URLShortener) GenerateShortURLPartBatch(ctx context.Context,
 			generatedURLs = append(generatedURLs, *model.NewURL(shortURL, url.OriginalURL))
 			response = append(response, *model.NewShortenBatchResponseItem(url.CorrelationID, shortURL))
 		}
-		err := u.storage.SaveBatch(ctx, generatedURLs)
+		err := u.storage.SaveBatch(ctx, userID, generatedURLs)
 		if err != nil {
 			if errors.Is(err, repository.ErrShortURLConflict) {
 				continue
@@ -86,6 +88,10 @@ func (u *URLShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart st
 		return "", err
 	}
 	return resultURL, nil
+}
+
+func (u *URLShortener) GetURLsByUserID(ctx context.Context, userID string) ([]model.URL, error) {
+	return u.storage.GetByUserID(ctx, userID)
 }
 
 func (u *URLShortener) PingRepository(ctx context.Context) error {

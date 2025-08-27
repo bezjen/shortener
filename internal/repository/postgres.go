@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -24,9 +25,10 @@ func NewPostgresRepository(databaseDSN string) (*PostgresRepository, error) {
 	}, nil
 }
 
-func (p *PostgresRepository) Save(ctx context.Context, url model.URL) error {
+func (p *PostgresRepository) Save(ctx context.Context, userID string, url model.URL) error {
 	_, err := p.db.ExecContext(ctx,
-		"insert into t_short_url(short_url, original_url) values ($1, $2)", url.ShortURL, url.OriginalURL)
+		"insert into t_short_url(short_url, original_url, user_id) values ($1, $2, $3)",
+		url.ShortURL, url.OriginalURL, userID)
 	if err != nil {
 		if isUniqueViolation(err) {
 			uniqueErr, err := p.newURLExistsError(ctx, url.OriginalURL)
@@ -40,7 +42,7 @@ func (p *PostgresRepository) Save(ctx context.Context, url model.URL) error {
 	return nil
 }
 
-func (p *PostgresRepository) SaveBatch(ctx context.Context, urls []model.URL) error {
+func (p *PostgresRepository) SaveBatch(ctx context.Context, userID string, urls []model.URL) error {
 	tx, err := p.db.Begin()
 
 	if err != nil {
@@ -49,7 +51,8 @@ func (p *PostgresRepository) SaveBatch(ctx context.Context, urls []model.URL) er
 
 	for _, url := range urls {
 		_, err = tx.ExecContext(ctx,
-			"insert into t_short_url(short_url, original_url) values ($1, $2)", url.ShortURL, url.OriginalURL)
+			"insert into t_short_url(short_url, original_url, user_id) values ($1, $2, $3)",
+			url.ShortURL, url.OriginalURL, userID)
 		if err != nil {
 			err := tx.Rollback()
 			if err != nil {
@@ -70,6 +73,30 @@ func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string)
 		return "", err
 	}
 	return originalURL, nil
+}
+
+func (p *PostgresRepository) GetByUserID(ctx context.Context, userID string) ([]model.URL, error) {
+	rows, err := p.db.QueryContext(ctx,
+		"select short_url, original_url from t_short_url where user_id = $1",
+		userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query URLs for user %s: %w", userID, err)
+	}
+	defer rows.Close()
+	var urls []model.URL
+	for rows.Next() {
+		var shortURL, originalURL string
+		err := rows.Scan(&shortURL, &originalURL) // TODO: fix scan
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan URL row: %w", err)
+		}
+		url := model.NewURL(shortURL, originalURL)
+		urls = append(urls, *url)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+	return urls, nil
 }
 
 func (p *PostgresRepository) Ping(ctx context.Context) error {

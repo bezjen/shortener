@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/logger"
+	"github.com/bezjen/shortener/internal/middleware"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
 	"github.com/bezjen/shortener/internal/service"
@@ -30,7 +31,7 @@ func NewShortenerHandler(cfg config.Config, logger *logger.Logger, shortener ser
 }
 
 func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r *http.Request) {
-
+	userID := getUserIdFromCookie(r)
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -44,7 +45,7 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 		http.Error(rw, "incorrect url", http.StatusBadRequest)
 		return
 	}
-	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), bodyString)
+	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), userID, bodyString)
 	if err != nil {
 		var uniqueURLErr *repository.ErrURLConflict
 		if errors.As(err, &uniqueURLErr) {
@@ -100,6 +101,7 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 }
 
 func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *http.Request) {
+	userID := getUserIdFromCookie(r)
 	rw.Header().Set("Content-Type", "application/json")
 
 	defer r.Body.Close()
@@ -112,7 +114,7 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 		h.writeShortenJSONErrorResponse(rw, http.StatusBadRequest, "incorrect url")
 		return
 	}
-	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), request.URL)
+	shortURL, err := h.shortener.GenerateShortURLPart(r.Context(), userID, request.URL)
 	if err != nil {
 		var uniqueURLErr *repository.ErrURLConflict
 		if errors.As(err, &uniqueURLErr) {
@@ -151,6 +153,7 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 }
 
 func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r *http.Request) {
+	userID := getUserIdFromCookie(r)
 	rw.Header().Set("Content-Type", "application/json")
 
 	defer r.Body.Close()
@@ -165,7 +168,7 @@ func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r
 			return
 		}
 	}
-	shortURLs, err := h.shortener.GenerateShortURLPartBatch(r.Context(), request)
+	shortURLs, err := h.shortener.GenerateShortURLPartBatch(r.Context(), userID, request)
 	if err != nil {
 		h.logger.Error("Failed to generate short OriginalURL",
 			zap.Error(err),
@@ -231,4 +234,12 @@ func (h *ShortenerHandler) writeJSONBatchResponse(rw http.ResponseWriter,
 		h.logger.Error("Failed to encode error response", zap.Error(err))
 		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
+}
+
+func getUserIdFromCookie(r *http.Request) string {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		return ""
+	}
+	return userID
 }

@@ -90,7 +90,7 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(mocks.Shortener)
-	mockShortener.On("GenerateShortURLPart", mock.Anything, "https://practicum.yandex.ru/").
+	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
@@ -140,7 +140,7 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(mocks.Shortener)
-	mockShortener.On("GenerateShortURLPart", mock.Anything, "https://practicum.yandex.ru/").
+	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
@@ -197,11 +197,13 @@ func TestHandlePostShortURLBatchJSON(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(mocks.Shortener)
-	mockShortener.On("GenerateShortURLPartBatch", mock.Anything, []model.ShortenBatchRequestItem{
-		*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
-	}).Return([]model.ShortenBatchResponseItem{
-		*model.NewShortenBatchResponseItem("123", "qwerty12"),
-	}, nil)
+	mockShortener.On("GenerateShortURLPartBatch", mock.Anything, mock.Anything,
+		[]model.ShortenBatchRequestItem{*model.NewShortenBatchRequestItem(
+			"123", "https://practicum.yandex.ru/"),
+		}).Return(
+		[]model.ShortenBatchResponseItem{
+			*model.NewShortenBatchResponseItem("123", "qwerty12"),
+		}, nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
 	tests := []struct {
