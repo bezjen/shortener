@@ -281,7 +281,7 @@ func TestHandleGetUserURLsJSON(t *testing.T) {
 				ctx := context.WithValue(req.Context(), middleware.UserIDKey, "user123")
 				*req = *req.WithContext(ctx)
 			},
-			expectedCode: http.StatusCreated,
+			expectedCode: http.StatusOK,
 			expectedBody: `[{"short_url":"http://localhost:8080/qwerty12","original_url":"https://example.com/page1"},{"short_url":"http://localhost:8080/qwerty34","original_url":"https://example.com/page2"}]` + "\n",
 			expectJSON:   true,
 		},
