@@ -4,15 +4,21 @@ import (
 	"github.com/bezjen/shortener/internal/handler"
 	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/middleware"
+	"github.com/bezjen/shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 )
 
-func NewRouter(logger *logger.Logger, shortenerHandler handler.ShortenerHandler) *chi.Mux {
+func NewRouter(logger *logger.Logger,
+	authorizer service.Authorizer,
+	shortenerHandler handler.ShortenerHandler,
+) *chi.Mux {
 	r := chi.NewRouter()
+	authMiddleware := middleware.NewAuthMiddleware(authorizer, logger)
 	loggingMiddleware := middleware.NewLoggingMiddleware(logger)
 	gzipMiddleware := middleware.NewGzipMiddleware(logger)
 
 	r.Use(
+		authMiddleware.WithAuth,
 		loggingMiddleware.WithLogging,
 		gzipMiddleware.WithGzipRequestDecompression,
 		gzipMiddleware.WithGzipResponseCompression)
