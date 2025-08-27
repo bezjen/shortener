@@ -2,10 +2,9 @@ package middleware
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/service"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"net/http"
 )
@@ -71,13 +70,12 @@ func updateCookie(w http.ResponseWriter, newToken string) {
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
-
 }
 
 func generateNewUserID() (string, error) {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
+	userId, err := uuid.NewUUID()
+	if err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(bytes), nil
+	return userId.String(), nil
 }
