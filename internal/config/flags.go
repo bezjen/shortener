@@ -1,10 +1,7 @@
 package config
 
 import (
-	"crypto/rand"
 	"flag"
-	"fmt"
-	"log"
 	"os"
 )
 
@@ -14,7 +11,7 @@ type Config struct {
 	LogLevel        string
 	FileStoragePath string
 	DatabaseDSN     string
-	SecretKey       []byte
+	SecretKey       string
 }
 
 var AppConfig Config
@@ -60,23 +57,8 @@ func ParseConfig() {
 	}
 	secretKey, secretKeyExists := os.LookupEnv("SECRET_KEY")
 	if secretKeyExists {
-		AppConfig.SecretKey = []byte(secretKey)
+		AppConfig.SecretKey = secretKey
 	} else if *flagSecretKey != "" {
-		AppConfig.SecretKey = []byte(*flagDatabaseDSN)
-	} else {
-		generatedKey, err := generateRandomKey(32)
-		if err != nil {
-			log.Fatal("Failed to generate secret key:", err)
-		}
-		AppConfig.SecretKey = generatedKey
+		AppConfig.SecretKey = *flagDatabaseDSN
 	}
-}
-
-func generateRandomKey(length int) ([]byte, error) {
-	key := make([]byte, length)
-	_, err := rand.Read(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate random key: %w", err)
-	}
-	return key, nil
 }

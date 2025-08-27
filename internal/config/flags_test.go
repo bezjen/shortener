@@ -23,6 +23,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "info",
 				FileStoragePath: "",
 				DatabaseDSN:     "",
+				SecretKey:       "",
 			},
 		},
 		{
@@ -35,6 +36,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "info",
 				FileStoragePath: "",
 				DatabaseDSN:     "",
+				SecretKey:       "",
 			},
 		},
 		{
@@ -50,6 +52,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "info",
 				FileStoragePath: "",
 				DatabaseDSN:     "",
+				SecretKey:       "",
 			},
 		},
 		{
@@ -64,6 +67,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "info",
 				FileStoragePath: "",
 				DatabaseDSN:     "",
+				SecretKey:       "",
 			},
 		},
 		{
@@ -79,6 +83,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "info",
 				FileStoragePath: "",
 				DatabaseDSN:     "",
+				SecretKey:       "",
 			},
 		},
 		{
@@ -93,6 +98,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "fatal",
 				FileStoragePath: "",
 				DatabaseDSN:     "",
+				SecretKey:       "",
 			},
 		},
 		{
@@ -105,6 +111,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "fatal",
 				FileStoragePath: "",
 				DatabaseDSN:     "",
+				SecretKey:       "",
 			},
 		},
 		{
@@ -119,6 +126,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "info",
 				FileStoragePath: "./storage_new.json",
 				DatabaseDSN:     "",
+				SecretKey:       "",
 			},
 		},
 		{
@@ -131,6 +139,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "info",
 				FileStoragePath: "./storage_new.json",
 				DatabaseDSN:     "",
+				SecretKey:       "",
 			},
 		},
 		{
@@ -145,6 +154,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "info",
 				FileStoragePath: "",
 				DatabaseDSN:     "ds",
+				SecretKey:       "",
 			},
 		},
 		{
@@ -157,6 +167,7 @@ func TestParseFlags(t *testing.T) {
 				LogLevel:        "info",
 				FileStoragePath: "",
 				DatabaseDSN:     "ds",
+				SecretKey:       "",
 			},
 		},
 	}

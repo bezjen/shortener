@@ -36,7 +36,7 @@ func main() {
 		}
 	}(storage)
 	urlShortener := service.NewURLShortener(storage)
-	authorizer := service.NewAuthorizer(cfg.SecretKey, shortenerLogger)
+	authorizer := service.NewAuthorizer([]byte(cfg.SecretKey), shortenerLogger)
 	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener)
 	shortenerRouter := router.NewRouter(shortenerLogger, authorizer, *shortenerHandler)
 
