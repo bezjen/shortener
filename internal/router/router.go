@@ -28,6 +28,7 @@ func NewRouter(logger *logger.Logger,
 	r.Get("/{shortURL}", shortenerHandler.HandleGetShortURLRedirect)
 	r.Post("/api/shorten", shortenerHandler.HandlePostShortURLJSON)
 	r.Post("/api/shorten/batch", shortenerHandler.HandlePostShortURLBatchJSON)
+	r.Get("/api/user/urls", shortenerHandler.HandleGetUserURLsJSON)
 
 	return r
 }

@@ -9,14 +9,6 @@ type ShortenJSONResponse struct {
 	Error    string `json:"error,omitempty"`
 }
 
-type ShortenBatchJSONRequest struct {
-	Items []ShortenBatchRequestItem
-}
-
-type ShortenBatchJSONResponse struct {
-	Items []ShortenBatchResponseItem
-}
-
 type ShortenBatchRequestItem struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
@@ -25,6 +17,11 @@ type ShortenBatchRequestItem struct {
 type ShortenBatchResponseItem struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
+}
+
+type UserUrlResponseItem struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 func NewShortenBatchRequestItem(correlationID string, OriginalURL string) *ShortenBatchRequestItem {
@@ -38,5 +35,12 @@ func NewShortenBatchResponseItem(correlationID string, shortURL string) *Shorten
 	return &ShortenBatchResponseItem{
 		CorrelationID: correlationID,
 		ShortURL:      shortURL,
+	}
+}
+
+func NewUserUrlResponseItem(shortURL string, originalURL string) *UserUrlResponseItem {
+	return &UserUrlResponseItem{
+		ShortURL:    shortURL,
+		OriginalURL: originalURL,
 	}
 }

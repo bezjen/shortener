@@ -195,6 +195,45 @@ func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r
 	h.writeJSONBatchResponse(rw, http.StatusCreated, response)
 }
 
+func (h *ShortenerHandler) HandleGetUserURLsJSON(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+	userID := getUserIdFromCookie(r)
+	if userID == "" {
+		h.writeShortenJSONErrorResponse(rw, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+	}
+
+	defer r.Body.Close()
+
+	userURLs, err := h.shortener.GetURLsByUserID(r.Context(), userID)
+	if err != nil {
+		h.logger.Error("Failed to get urls for user", zap.Error(err), zap.String("userID", userID))
+		h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+	if len(userURLs) == 0 {
+		rw.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	var response []model.UserUrlResponseItem
+	for _, userURL := range userURLs {
+		fullShortURL, err := url.JoinPath(h.cfg.BaseURL, userURL.ShortURL)
+		if err != nil {
+			h.logger.Error("Failed to generate full short OriginalURL",
+				zap.Error(err),
+				zap.String("baseURL", h.cfg.BaseURL),
+				zap.String("shortURL", userURL.ShortURL),
+			)
+			h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+			return
+		}
+		response = append(response, *model.NewUserUrlResponseItem(fullShortURL, userURL.OriginalURL))
+	}
+
+	h.writeJSONUserURLsResponse(rw, http.StatusCreated, response)
+}
+
 func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, r *http.Request) {
 	err := h.shortener.PingRepository(r.Context())
 	if err != nil {
@@ -227,6 +266,17 @@ func (h *ShortenerHandler) writeJSONResponse(rw http.ResponseWriter, statusCode 
 
 func (h *ShortenerHandler) writeJSONBatchResponse(rw http.ResponseWriter,
 	statusCode int, response []model.ShortenBatchResponseItem,
+) {
+	rw.WriteHeader(statusCode)
+	err := json.NewEncoder(rw).Encode(response)
+	if err != nil {
+		h.logger.Error("Failed to encode error response", zap.Error(err))
+		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func (h *ShortenerHandler) writeJSONUserURLsResponse(rw http.ResponseWriter,
+	statusCode int, response []model.UserUrlResponseItem,
 ) {
 	rw.WriteHeader(statusCode)
 	err := json.NewEncoder(rw).Encode(response)
