@@ -85,15 +85,14 @@ func (p *PostgresRepository) GetByUserID(ctx context.Context, userID string) ([]
 	defer rows.Close()
 	var urls []model.URL
 	for rows.Next() {
-		var shortURL, originalURL string
-		err := rows.Scan(&shortURL, &originalURL) // TODO: fix scan
+		var url model.URL
+		err = rows.Scan(&url.ShortURL, &url.OriginalURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan URL row: %w", err)
 		}
-		url := model.NewURL(shortURL, originalURL)
-		urls = append(urls, *url)
+		urls = append(urls, url)
 	}
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("error during rows iteration: %w", err)
 	}
 	return urls, nil
