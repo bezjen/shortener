@@ -44,11 +44,11 @@ func TestGenerateShortURLPart(t *testing.T) {
 			u := &URLShortener{
 				storage: tt.storage,
 			}
-			userId, err := uuid.NewUUID()
+			userID, err := uuid.NewUUID()
 			if err != nil {
 				t.Fatalf("Failed to generate uuid: %v", err)
 			}
-			shortURL, err := u.GenerateShortURLPart(context.TODO(), userId.String(), tt.url)
+			shortURL, err := u.GenerateShortURLPart(context.TODO(), userID.String(), tt.url)
 			if err != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)
@@ -96,11 +96,11 @@ func TestGenerateShortURLPartBatch(t *testing.T) {
 			u := &URLShortener{
 				storage: tt.storage,
 			}
-			userId, err := uuid.NewUUID()
+			userID, err := uuid.NewUUID()
 			if err != nil {
 				t.Fatalf("Failed to generate uuid: %v", err)
 			}
-			shortURL, err := u.GenerateShortURLPartBatch(context.TODO(), userId.String(), tt.urls)
+			shortURL, err := u.GenerateShortURLPartBatch(context.TODO(), userID.String(), tt.urls)
 			if err != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)

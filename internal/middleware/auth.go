@@ -73,9 +73,9 @@ func updateCookie(w http.ResponseWriter, newToken string) {
 }
 
 func generateNewUserID() (string, error) {
-	userId, err := uuid.NewUUID()
+	userID, err := uuid.NewUUID()
 	if err != nil {
 		return "", err
 	}
-	return userId.String(), nil
+	return userID.String(), nil
 }

@@ -50,14 +50,12 @@ func (m *GzipMiddleware) WithGzipResponseCompression(h http.Handler) http.Handle
 		}
 
 		gw := compress.NewGzipWriter(w)
+		h.ServeHTTP(gw, r)
 		defer func(gw *compress.GzipWriter) {
 			err := gw.Close()
 			if err != nil {
 				m.logger.Error("Failed to close gzip writer", zap.Error(err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
 			}
 		}(gw)
-		h.ServeHTTP(gw, r)
 	})
 }

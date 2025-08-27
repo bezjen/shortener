@@ -22,11 +22,11 @@ func TestInMemoryRepositorySuccess(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			userId, err := uuid.NewUUID()
+			userID, err := uuid.NewUUID()
 			if err != nil {
 				t.Fatalf("Failed to generate uuid: %v", err)
 			}
-			err = repo.Save(context.TODO(), userId.String(), tt.url)
+			err = repo.Save(context.TODO(), userID.String(), tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
@@ -58,11 +58,11 @@ func TestInMemoryRepositorySaveBatchSuccess(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			userId, err := uuid.NewUUID()
+			userID, err := uuid.NewUUID()
 			if err != nil {
 				t.Fatalf("Failed to generate uuid: %v", err)
 			}
-			err = repo.SaveBatch(context.TODO(), userId.String(), tt.batch)
+			err = repo.SaveBatch(context.TODO(), userID.String(), tt.batch)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
@@ -93,15 +93,15 @@ func TestInMemoryRepositoryErrConflict(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			userId, err := uuid.NewUUID()
+			userID, err := uuid.NewUUID()
 			if err != nil {
 				t.Fatalf("Failed to generate uuid: %v", err)
 			}
-			err = repo.Save(context.TODO(), userId.String(), tt.url)
+			err = repo.Save(context.TODO(), userID.String(), tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.Save(context.TODO(), userId.String(), tt.url)
+			err = repo.Save(context.TODO(), userID.String(), tt.url)
 			if !errors.Is(err, ErrShortURLConflict) {
 				t.Errorf("got %v, want %v", err, ErrShortURLConflict)
 			}
@@ -132,15 +132,15 @@ func TestInMemoryRepositorySaveBatchErrConflict(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			userId, err := uuid.NewUUID()
+			userID, err := uuid.NewUUID()
 			if err != nil {
 				t.Fatalf("Failed to generate uuid: %v", err)
 			}
-			err = repo.SaveBatch(context.TODO(), userId.String(), tt.batch)
+			err = repo.SaveBatch(context.TODO(), userID.String(), tt.batch)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.SaveBatch(context.TODO(), userId.String(), tt.batch)
+			err = repo.SaveBatch(context.TODO(), userID.String(), tt.batch)
 			if !errors.Is(err, ErrShortURLConflict) {
 				t.Errorf("got %v, want %v", err, ErrShortURLConflict)
 			}

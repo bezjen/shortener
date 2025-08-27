@@ -34,11 +34,11 @@ func TestFileRepositorySuccess(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			userId, err := uuid.NewUUID()
+			userID, err := uuid.NewUUID()
 			if err != nil {
 				t.Fatalf("Failed to generate uuid: %v", err)
 			}
-			err = repo.Save(context.TODO(), userId.String(), tt.url)
+			err = repo.Save(context.TODO(), userID.String(), tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
@@ -68,15 +68,15 @@ func TestFileRepositoryErrConflict(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			userId, err := uuid.NewUUID()
+			userID, err := uuid.NewUUID()
 			if err != nil {
 				t.Fatalf("Failed to generate uuid: %v", err)
 			}
-			err = repo.Save(context.TODO(), userId.String(), tt.url)
+			err = repo.Save(context.TODO(), userID.String(), tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.Save(context.TODO(), userId.String(), tt.url)
+			err = repo.Save(context.TODO(), userID.String(), tt.url)
 			if !errors.Is(err, ErrShortURLConflict) {
 				t.Errorf("got %v, want %v", err, ErrShortURLConflict)
 			}
