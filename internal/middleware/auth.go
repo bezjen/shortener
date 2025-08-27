@@ -9,9 +9,11 @@ import (
 	"net/http"
 )
 
+type userIDKey string
+
 const (
-	CookieName = "user_token"
-	UserIDKey  = "userID"
+	CookieName           = "user_token"
+	UserIDKey  userIDKey = "userID"
 )
 
 type AuthMiddleware struct {

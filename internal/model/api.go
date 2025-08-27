@@ -19,7 +19,7 @@ type ShortenBatchResponseItem struct {
 	ShortURL      string `json:"short_url"`
 }
 
-type UserUrlResponseItem struct {
+type UserURLResponseItem struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
@@ -38,8 +38,8 @@ func NewShortenBatchResponseItem(correlationID string, shortURL string) *Shorten
 	}
 }
 
-func NewUserUrlResponseItem(shortURL string, originalURL string) *UserUrlResponseItem {
-	return &UserUrlResponseItem{
+func NewUserURLResponseItem(shortURL string, originalURL string) *UserURLResponseItem {
+	return &UserURLResponseItem{
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
 	}

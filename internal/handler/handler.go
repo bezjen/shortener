@@ -216,7 +216,7 @@ func (h *ShortenerHandler) HandleGetUserURLsJSON(rw http.ResponseWriter, r *http
 		return
 	}
 
-	var response []model.UserUrlResponseItem
+	var response []model.UserURLResponseItem
 	for _, userURL := range userURLs {
 		fullShortURL, err := url.JoinPath(h.cfg.BaseURL, userURL.ShortURL)
 		if err != nil {
@@ -228,7 +228,7 @@ func (h *ShortenerHandler) HandleGetUserURLsJSON(rw http.ResponseWriter, r *http
 			h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 			return
 		}
-		response = append(response, *model.NewUserUrlResponseItem(fullShortURL, userURL.OriginalURL))
+		response = append(response, *model.NewUserURLResponseItem(fullShortURL, userURL.OriginalURL))
 	}
 
 	h.writeJSONUserURLsResponse(rw, http.StatusCreated, response)
@@ -276,7 +276,7 @@ func (h *ShortenerHandler) writeJSONBatchResponse(rw http.ResponseWriter,
 }
 
 func (h *ShortenerHandler) writeJSONUserURLsResponse(rw http.ResponseWriter,
-	statusCode int, response []model.UserUrlResponseItem,
+	statusCode int, response []model.UserURLResponseItem,
 ) {
 	rw.WriteHeader(statusCode)
 	err := json.NewEncoder(rw).Encode(response)

@@ -135,7 +135,7 @@ func TestGetURLByShortURLPart(t *testing.T) {
 			wantErr:      nil,
 		},
 		{
-			name:         "Url not found case",
+			name:         "URL not found case",
 			storage:      mockRepoNotFound,
 			shortURLPart: "qwerty12",
 			want:         "",
