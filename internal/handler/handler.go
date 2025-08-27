@@ -31,7 +31,7 @@ func NewShortenerHandler(cfg config.Config, logger *logger.Logger, shortener ser
 }
 
 func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r *http.Request) {
-	userID := getUserIdFromCookie(r)
+	userID := getUserIdFromContext(r)
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -101,7 +101,7 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 }
 
 func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *http.Request) {
-	userID := getUserIdFromCookie(r)
+	userID := getUserIdFromContext(r)
 	rw.Header().Set("Content-Type", "application/json")
 
 	defer r.Body.Close()
@@ -153,7 +153,7 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 }
 
 func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r *http.Request) {
-	userID := getUserIdFromCookie(r)
+	userID := getUserIdFromContext(r)
 	rw.Header().Set("Content-Type", "application/json")
 
 	defer r.Body.Close()
@@ -197,7 +197,7 @@ func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r
 
 func (h *ShortenerHandler) HandleGetUserURLsJSON(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
-	userID := getUserIdFromCookie(r)
+	userID := getUserIdFromContext(r)
 	if userID == "" {
 		h.writeShortenJSONErrorResponse(rw, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 		return
@@ -286,7 +286,7 @@ func (h *ShortenerHandler) writeJSONUserURLsResponse(rw http.ResponseWriter,
 	}
 }
 
-func getUserIdFromCookie(r *http.Request) string {
+func getUserIdFromContext(r *http.Request) string {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userID == "" {
 		return ""
