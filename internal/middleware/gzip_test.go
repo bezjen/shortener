@@ -42,7 +42,7 @@ func TestWithGzipRequestDecompression(t *testing.T) {
 		},
 	}
 	testLogger, _ := logger.NewLogger("debug")
-	m := NewMiddleware(testLogger)
+	m := NewGzipMiddleware(testLogger)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -91,7 +91,7 @@ func TestWithGzipResponseCompression(t *testing.T) {
 		},
 	}
 	testLogger, _ := logger.NewLogger("debug")
-	m := NewMiddleware(testLogger)
+	m := NewGzipMiddleware(testLogger)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

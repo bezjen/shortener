@@ -9,12 +9,13 @@ import (
 
 func NewRouter(logger *logger.Logger, shortenerHandler handler.ShortenerHandler) *chi.Mux {
 	r := chi.NewRouter()
-	m := middleware.NewMiddleware(logger)
+	loggingMiddleware := middleware.NewLoggingMiddleware(logger)
+	gzipMiddleware := middleware.NewGzipMiddleware(logger)
 
 	r.Use(
-		m.WithLogging,
-		m.WithGzipRequestDecompression,
-		m.WithGzipResponseCompression)
+		loggingMiddleware.WithLogging,
+		gzipMiddleware.WithGzipRequestDecompression,
+		gzipMiddleware.WithGzipResponseCompression)
 
 	r.Post("/", shortenerHandler.HandlePostShortURLTextPlain)
 	r.Get("/ping", shortenerHandler.HandlePingRepository)
