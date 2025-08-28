@@ -248,14 +248,14 @@ func (h *ShortenerHandler) HandleDeleteShortURLsBatchJSON(rw http.ResponseWriter
 		h.writeShortenJSONErrorResponse(rw, http.StatusBadRequest, "incorrect json")
 		return
 	}
-	err := h.shortener.DeleteUserShortURLsBatch(r.Context(), userID, shortURLs) // TODO: add worker (?)
+	err := h.shortener.DeleteUserShortURLsBatch(r.Context(), userID, shortURLs)
 	if err != nil {
 		h.logger.Error("Failed to delete short URLs for user",
 			zap.Error(err),
 			zap.String("userID", userID),
 			zap.Strings("shortURLs", shortURLs),
 		)
-		h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		h.writeShortenJSONErrorResponse(rw, http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests))
 	}
 
 	rw.WriteHeader(http.StatusAccepted)

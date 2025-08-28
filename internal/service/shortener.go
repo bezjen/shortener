@@ -1,4 +1,3 @@
-//go:generate mockery --name=Shortener --output=../mocks --case=underscore
 package service
 
 import (
@@ -8,6 +7,7 @@ import (
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
 	"math/big"
+	"sync"
 )
 
 const (
@@ -29,13 +29,26 @@ type Shortener interface {
 }
 
 type URLShortener struct {
-	storage repository.Repository
+	storage     repository.Repository
+	deleteQueue chan deleteTask
+	wg          sync.WaitGroup
+}
+
+type deleteTask struct {
+	userID    string
+	shortURLs []string
 }
 
 func NewURLShortener(storage repository.Repository) *URLShortener {
-	return &URLShortener{
-		storage: storage,
+	shortener := &URLShortener{
+		storage:     storage,
+		deleteQueue: make(chan deleteTask, 1000),
 	}
+	for i := 0; i < 5; i++ {
+		shortener.wg.Add(1)
+		go shortener.deleteWorker()
+	}
+	return shortener
 }
 
 func (u *URLShortener) GenerateShortURLPart(ctx context.Context, userID string, url string) (string, error) {
@@ -83,8 +96,13 @@ func (u *URLShortener) GenerateShortURLPartBatch(ctx context.Context,
 	return nil, ErrGenerate
 }
 
-func (u *URLShortener) DeleteUserShortURLsBatch(ctx context.Context, userID string, shortURLs []string) error {
-	return u.storage.DeleteBatch(ctx, userID, shortURLs) // TODO: add batching
+func (u *URLShortener) DeleteUserShortURLsBatch(_ context.Context, userID string, shortURLs []string) error {
+	select {
+	case u.deleteQueue <- deleteTask{userID: userID, shortURLs: shortURLs}:
+		return nil
+	default:
+		return errors.New("delete queue is full")
+	}
 }
 
 func (u *URLShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (*model.URL, error) {
@@ -101,6 +119,23 @@ func (u *URLShortener) GetURLsByUserID(ctx context.Context, userID string) ([]mo
 
 func (u *URLShortener) PingRepository(ctx context.Context) error {
 	return u.storage.Ping(ctx)
+}
+
+func (u *URLShortener) Close() {
+	close(u.deleteQueue)
+	u.wg.Wait()
+}
+
+func (u *URLShortener) deleteWorker() {
+	defer u.wg.Done()
+
+	for task := range u.deleteQueue {
+		err := u.storage.DeleteBatch(context.Background(), task.userID, task.shortURLs)
+		if err != nil {
+			// TODO: log err
+			continue
+		}
+	}
 }
 
 func generateRandomString(length int) (string, error) {
