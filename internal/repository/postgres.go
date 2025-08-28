@@ -27,18 +27,26 @@ func NewPostgresRepository(databaseDSN string) (*PostgresRepository, error) {
 
 func (p *PostgresRepository) Save(ctx context.Context, userID string, url model.URL) error {
 	_, err := p.db.ExecContext(ctx,
-		"insert into t_short_url(short_url, original_url, user_id) values ($1, $2, $3)"+
-			"on conflict (original_url) do update "+
-			"set short_url = EXCLUDED.short_url, user_id = EXCLUDED.user_id, is_deleted = false "+
-			"where t_short_url.is_deleted = true",
+		"insert into t_short_url(short_url, original_url, user_id, is_deleted) values ($1, $2, $3, false)",
 		url.ShortURL, url.OriginalURL, userID)
 	if err != nil {
 		if isUniqueViolation(err) {
-			uniqueErr, errConflict := p.newURLExistsError(ctx, url.OriginalURL)
-			if errConflict != nil {
-				return errConflict
+			var shortURL string
+			var isDeleted bool
+			row := p.db.QueryRowContext(ctx,
+				"select short_url, is_deleted from t_short_url where original_url = $1;",
+				url.OriginalURL)
+			errScan := row.Scan(&shortURL, &isDeleted)
+			if errScan != nil {
+				return errScan
 			}
-			return uniqueErr
+			if isDeleted {
+				_, errUpdate := p.db.ExecContext(ctx,
+					"update t_short_url set short_url = $1, user_id = $2, is_deleted = false where original_url = $3;",
+					url.ShortURL, userID, url.OriginalURL)
+				return errUpdate
+			}
+			return &ErrURLConflict{ShortURL: shortURL, Err: "Original URL already exists"}
 		}
 		return err
 	}
@@ -56,13 +64,32 @@ func (p *PostgresRepository) SaveBatch(ctx context.Context, userID string, urls 
 	}
 
 	for _, url := range urls {
-		_, err = tx.ExecContext(ctx,
-			"insert into t_short_url(short_url, original_url, user_id) values ($1, $2, $3)"+
-				"on conflict (original_url) do update "+
-				"set short_url = EXCLUDED.short_url, user_id = EXCLUDED.user_id, is_deleted = false "+
-				"where t_short_url.is_deleted = true",
+		_, err = p.db.ExecContext(ctx,
+			"insert into t_short_url(short_url, original_url, user_id, is_deleted) values ($1, $2, $3, false)",
 			url.ShortURL, url.OriginalURL, userID)
 		if err != nil {
+			if isUniqueViolation(err) {
+				var isDeleted bool
+				row := p.db.QueryRowContext(ctx,
+					"select is_deleted from t_short_url where original_url = $1;",
+					url.OriginalURL)
+				errScan := row.Scan(&isDeleted)
+				if errScan != nil {
+					errRollback := tx.Rollback()
+					if errRollback != nil {
+						return errRollback
+					}
+					return errScan
+				}
+				if isDeleted {
+					_, errUpdate := p.db.ExecContext(ctx,
+						"update t_short_url set short_url = $1, user_id = $2, is_deleted = false where original_url = $3;",
+						url.ShortURL, userID, url.OriginalURL)
+					if errUpdate == nil {
+						continue
+					}
+				}
+			}
 			errRollback := tx.Rollback()
 			if errRollback != nil {
 				return errRollback
@@ -140,16 +167,6 @@ func (p *PostgresRepository) Ping(ctx context.Context) error {
 
 func (p *PostgresRepository) Close() error {
 	return p.db.Close()
-}
-
-func (p *PostgresRepository) newURLExistsError(ctx context.Context, originalURL string) (*ErrURLConflict, error) {
-	var shortURL string
-	row := p.db.QueryRowContext(ctx, "select short_url from t_short_url where original_url = $1;", originalURL)
-	err := row.Scan(&shortURL)
-	if err != nil {
-		return nil, err
-	}
-	return &ErrURLConflict{ShortURL: shortURL, Err: "Original URL already exists"}, nil
 }
 
 func (p *PostgresRepository) getShortURLByOriginalURL(ctx context.Context, originalURL string) (string, error) {
