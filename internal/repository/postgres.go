@@ -101,7 +101,7 @@ func (p *PostgresRepository) SaveBatch(ctx context.Context, userID string, urls 
 	return tx.Commit()
 }
 
-func (p *PostgresRepository) DeleteBatch(ctx context.Context, userID string, shortURLs []string) error {
+func (p *PostgresRepository) DeleteBatch(ctx context.Context, _ string, shortURLs []string) error {
 	if len(shortURLs) == 0 {
 		return nil
 	}
@@ -111,14 +111,16 @@ func (p *PostgresRepository) DeleteBatch(ctx context.Context, userID string, sho
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx,
-		"update t_short_url set is_deleted = true where user_id = $1 and short_url = any($2)",
-		userID, shortURLs)
+	stmt, err := tx.PrepareContext(ctx, "update t_short_url set is_deleted = true where short_url = any($1::text[])")
 	if err != nil {
-		errRollback := tx.Rollback()
-		if errRollback != nil {
-			return errRollback
-		}
+		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, shortURLs)
+	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
