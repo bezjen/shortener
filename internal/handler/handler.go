@@ -254,7 +254,7 @@ func (h *ShortenerHandler) HandleDeleteShortURLsBatchJSON(rw http.ResponseWriter
 		h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
 
-	rw.WriteHeader(http.StatusGone)
+	rw.WriteHeader(http.StatusAccepted)
 }
 
 func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, r *http.Request) {
