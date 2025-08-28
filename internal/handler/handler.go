@@ -234,6 +234,29 @@ func (h *ShortenerHandler) HandleGetUserURLsJSON(rw http.ResponseWriter, r *http
 	h.writeJSONUserURLsResponse(rw, http.StatusOK, response)
 }
 
+func (h *ShortenerHandler) HandleDeleteShortURLsBatchJSON(rw http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromContext(r)
+	rw.Header().Set("Content-Type", "application/json")
+
+	defer r.Body.Close()
+	var shortURLs []string
+	if err := json.NewDecoder(r.Body).Decode(&shortURLs); err != nil {
+		h.writeShortenJSONErrorResponse(rw, http.StatusBadRequest, "incorrect json")
+		return
+	}
+	err := h.shortener.DeleteUserShortURLsBatch(r.Context(), userID, shortURLs) // TODO: add worker (?)
+	if err != nil {
+		h.logger.Error("Failed to delete short URLs for user",
+			zap.Error(err),
+			zap.String("userID", userID),
+			zap.Strings("shortURLs", shortURLs),
+		)
+		h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	}
+
+	rw.WriteHeader(http.StatusGone)
+}
+
 func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, r *http.Request) {
 	err := h.shortener.PingRepository(r.Context())
 	if err != nil {
