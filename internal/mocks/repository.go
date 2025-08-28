@@ -32,6 +32,24 @@ func (_m *Repository) Close() error {
 	return r0
 }
 
+// DeleteBatch provides a mock function with given fields: ctx, userID, shortURLs
+func (_m *Repository) DeleteBatch(ctx context.Context, userID string, shortURLs []string) error {
+	ret := _m.Called(ctx, userID, shortURLs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteBatch")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) error); ok {
+		r0 = rf(ctx, userID, shortURLs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetByShortURL provides a mock function with given fields: ctx, id
 func (_m *Repository) GetByShortURL(ctx context.Context, id string) (string, error) {
 	ret := _m.Called(ctx, id)

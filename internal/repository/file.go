@@ -89,6 +89,10 @@ func (f *FileRepository) GetByUserID(_ context.Context, _ string) ([]model.URL, 
 	return nil, fmt.Errorf("method not implemented")
 }
 
+func (f *FileRepository) DeleteBatch(_ context.Context, _ string, _ []string) error {
+	return fmt.Errorf("method not implemented")
+}
+
 func (f *FileRepository) Ping(_ context.Context) error {
 	return nil
 }

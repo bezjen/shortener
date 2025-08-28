@@ -46,8 +46,11 @@ func (p *PostgresRepository) Save(ctx context.Context, userID string, url model.
 }
 
 func (p *PostgresRepository) SaveBatch(ctx context.Context, userID string, urls []model.URL) error {
-	tx, err := p.db.Begin()
+	if len(urls) == 0 {
+		return nil
+	}
 
+	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -66,6 +69,30 @@ func (p *PostgresRepository) SaveBatch(ctx context.Context, userID string, urls 
 			}
 			return err
 		}
+	}
+
+	return tx.Commit()
+}
+
+func (p *PostgresRepository) DeleteBatch(ctx context.Context, userID string, shortURLs []string) error {
+	if len(shortURLs) == 0 {
+		return nil
+	}
+
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx,
+		"update t_short_url set is_deleted = true where user_id = $1 and short_url = any($2)",
+		userID, shortURLs)
+	if err != nil {
+		errRollback := tx.Rollback()
+		if errRollback != nil {
+			return errRollback
+		}
+		return err
 	}
 
 	return tx.Commit()

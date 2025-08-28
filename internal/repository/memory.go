@@ -52,8 +52,12 @@ func (m *InMemoryRepository) GetByShortURL(_ context.Context, shortURL string) (
 	return storedURL, nil
 }
 
-func (m *InMemoryRepository) GetByUserID(_ context.Context, userID string) ([]model.URL, error) {
+func (m *InMemoryRepository) GetByUserID(_ context.Context, _ string) ([]model.URL, error) {
 	return nil, fmt.Errorf("method not implemented")
+}
+
+func (m *InMemoryRepository) DeleteBatch(_ context.Context, _ string, _ []string) error {
+	return fmt.Errorf("method not implemented")
 }
 
 func (m *InMemoryRepository) Ping(_ context.Context) error {
