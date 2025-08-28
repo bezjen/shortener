@@ -35,7 +35,7 @@ func main() {
 			log.Printf("Error during storage close cleanly: %v", err)
 		}
 	}(storage)
-	urlShortener := service.NewURLShortener(storage)
+	urlShortener := service.NewURLShortener(storage, shortenerLogger)
 	defer urlShortener.Close()
 	authorizer := service.NewAuthorizer([]byte(cfg.SecretKey), shortenerLogger)
 	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener)

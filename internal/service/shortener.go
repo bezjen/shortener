@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
+	"go.uber.org/zap"
 	"math/big"
 	"sync"
 )
@@ -30,6 +32,7 @@ type Shortener interface {
 
 type URLShortener struct {
 	storage     repository.Repository
+	logger      *logger.Logger
 	deleteQueue chan deleteTask
 	wg          sync.WaitGroup
 }
@@ -39,9 +42,10 @@ type deleteTask struct {
 	shortURLs []string
 }
 
-func NewURLShortener(storage repository.Repository) *URLShortener {
+func NewURLShortener(storage repository.Repository, logger *logger.Logger) *URLShortener {
 	shortener := &URLShortener{
 		storage:     storage,
+		logger:      logger,
 		deleteQueue: make(chan deleteTask, 1000),
 	}
 	for i := 0; i < 5; i++ {
@@ -132,7 +136,10 @@ func (u *URLShortener) deleteWorker() {
 	for task := range u.deleteQueue {
 		err := u.storage.DeleteBatch(context.Background(), task.userID, task.shortURLs)
 		if err != nil {
-			// TODO: log err
+			u.logger.Error("Failed to delete short urls for user",
+				zap.Error(err),
+				zap.Strings("shortURLs", task.shortURLs),
+				zap.String("userID", task.userID))
 			continue
 		}
 	}
