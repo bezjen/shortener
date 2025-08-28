@@ -21,13 +21,13 @@ func (m *LoggingMiddleware) WithLogging(h http.Handler) http.Handler {
 		uri := r.RequestURI
 		method := r.Method
 
-		responseData := &responseData{
+		response := &responseData{
 			status: 0,
 			size:   0,
 		}
 		lw := loggingResponseWriter{
 			ResponseWriter: w,
-			responseData:   responseData,
+			responseData:   response,
 		}
 		h.ServeHTTP(&lw, r)
 
@@ -36,8 +36,8 @@ func (m *LoggingMiddleware) WithLogging(h http.Handler) http.Handler {
 			zap.String("URI", uri),
 			zap.String("method", method),
 			zap.String("duration", duration.String()),
-			zap.Int("status", responseData.status),
-			zap.Int("size", responseData.size),
+			zap.Int("status", response.status),
+			zap.Int("size", response.size),
 		)
 	})
 }
