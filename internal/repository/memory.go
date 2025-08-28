@@ -42,14 +42,14 @@ func (m *InMemoryRepository) SaveBatch(_ context.Context, _ string, urls []model
 	return nil
 }
 
-func (m *InMemoryRepository) GetByShortURL(_ context.Context, shortURL string) (string, error) {
+func (m *InMemoryRepository) GetByShortURL(_ context.Context, shortURL string) (*model.URL, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	storedURL, exists := m.storage[shortURL]
 	if !exists {
-		return "", ErrNotFound
+		return nil, ErrNotFound
 	}
-	return storedURL, nil
+	return model.NewURL(shortURL, storedURL), nil
 }
 
 func (m *InMemoryRepository) GetByUserID(_ context.Context, _ string) ([]model.URL, error) {

@@ -95,8 +95,12 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 		http.Error(rw, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	if resultURL.IsDeleted {
+		rw.WriteHeader(http.StatusGone)
+		return
+	}
 	rw.Header().Set("Content-Type", "text/plain")
-	rw.Header().Set("Location", resultURL)
+	rw.Header().Set("Location", resultURL.OriginalURL)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
 }
 

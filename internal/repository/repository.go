@@ -16,7 +16,7 @@ type Repository interface {
 	Save(ctx context.Context, userID string, url model.URL) error
 	SaveBatch(ctx context.Context, userID string, urls []model.URL) error
 	DeleteBatch(ctx context.Context, userID string, shortURLs []string) error
-	GetByShortURL(ctx context.Context, id string) (string, error)
+	GetByShortURL(ctx context.Context, id string) (*model.URL, error)
 	GetByUserID(ctx context.Context, userID string) ([]model.URL, error)
 	Ping(ctx context.Context) error
 	Close() error

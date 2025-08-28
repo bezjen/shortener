@@ -115,30 +115,30 @@ func TestGenerateShortURLPartBatch(t *testing.T) {
 func TestGetURLByShortURLPart(t *testing.T) {
 	mockRepoPositive := new(mocks.Repository)
 	mockRepoPositive.On("GetByShortURL", mock.Anything, "qwerty12").
-		Return("https://practicum.yandex.ru/", nil)
+		Return(model.NewURL("qwerty12", "https://practicum.yandex.ru/"), nil)
 	mockRepoNotFound := new(mocks.Repository)
 	mockRepoNotFound.On("GetByShortURL", mock.Anything, "qwerty12").
-		Return("", repository.ErrNotFound)
+		Return(nil, repository.ErrNotFound)
 
 	tests := []struct {
 		name         string
 		storage      repository.Repository
 		shortURLPart string
-		want         string
+		want         *model.URL
 		wantErr      error
 	}{
 		{
 			name:         "Simple positive case",
 			storage:      mockRepoPositive,
 			shortURLPart: "qwerty12",
-			want:         "https://practicum.yandex.ru/",
+			want:         model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 			wantErr:      nil,
 		},
 		{
 			name:         "URL not found case",
 			storage:      mockRepoNotFound,
 			shortURLPart: "qwerty12",
-			want:         "",
+			want:         nil,
 			wantErr:      repository.ErrNotFound,
 		},
 	}
@@ -154,9 +154,7 @@ func TestGetURLByShortURLPart(t *testing.T) {
 				}
 				return
 			}
-			if got != tt.want {
-				t.Errorf("GetURLByShortURLPart() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

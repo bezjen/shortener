@@ -23,7 +23,7 @@ type Shortener interface {
 	GenerateShortURLPartBatch(ctx context.Context, userID string,
 		urls []model.ShortenBatchRequestItem) ([]model.ShortenBatchResponseItem, error)
 	DeleteUserShortURLsBatch(ctx context.Context, userID string, shortURLs []string) error
-	GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error)
+	GetURLByShortURLPart(ctx context.Context, shortURLPart string) (*model.URL, error)
 	GetURLsByUserID(ctx context.Context, userID string) ([]model.URL, error)
 	PingRepository(ctx context.Context) error
 }
@@ -87,10 +87,10 @@ func (u *URLShortener) DeleteUserShortURLsBatch(ctx context.Context, userID stri
 	return u.storage.DeleteBatch(ctx, userID, shortURLs) // TODO: add batching
 }
 
-func (u *URLShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error) {
+func (u *URLShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (*model.URL, error) {
 	resultURL, err := u.storage.GetByShortURL(ctx, shortURLPart)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return resultURL, nil
 }

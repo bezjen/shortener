@@ -98,19 +98,22 @@ func (p *PostgresRepository) DeleteBatch(ctx context.Context, userID string, sho
 	return tx.Commit()
 }
 
-func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (string, error) {
-	row := p.db.QueryRowContext(ctx, "select original_url from t_short_url where short_url = $1", shortURL)
+func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (*model.URL, error) {
+	row := p.db.QueryRowContext(ctx, "select original_url, is_deleted from t_short_url where short_url = $1", shortURL)
 	var originalURL string
-	err := row.Scan(&originalURL)
+	var isDeleted bool
+	err := row.Scan(&originalURL, &isDeleted)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return originalURL, nil
+	var url = model.NewURL(shortURL, originalURL)
+	url.IsDeleted = isDeleted
+	return url, nil
 }
 
 func (p *PostgresRepository) GetByUserID(ctx context.Context, userID string) ([]model.URL, error) {
 	rows, err := p.db.QueryContext(ctx,
-		"select short_url, original_url from t_short_url where user_id = $1",
+		"select short_url, original_url from t_short_url where user_id = $1 and is_deleted = false",
 		userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query URLs for user %s: %w", userID, err)

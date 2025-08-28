@@ -32,7 +32,10 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty12").
-		Return("https://practicum.yandex.ru/", nil)
+		Return(model.NewURL("qwerty12", "https://practicum.yandex.ru/"), nil)
+	deletedUrl := model.NewURL("qwerty13", "https://practicum.yandex1.ru/")
+	deletedUrl.IsDeleted = true
+	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty13").Return(deletedUrl, nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
 	tests := []struct {
@@ -57,6 +60,14 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 			expectedCode:        http.StatusBadRequest,
 			expectedContentType: "",
 			expectedBody:        "short url is empty\n",
+			expectedLocation:    "",
+		},
+		{
+			name:                "Deleted url",
+			path:                "qwerty13",
+			expectedCode:        http.StatusGone,
+			expectedContentType: "",
+			expectedBody:        "",
 			expectedLocation:    "",
 		},
 	}

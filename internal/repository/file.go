@@ -75,14 +75,14 @@ func (f *FileRepository) SaveBatch(_ context.Context, _ string, urls []model.URL
 	return nil
 }
 
-func (f *FileRepository) GetByShortURL(_ context.Context, shortURL string) (string, error) {
+func (f *FileRepository) GetByShortURL(_ context.Context, shortURL string) (*model.URL, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	storedShortURLDto, exists := f.memoryStorage[shortURL]
 	if !exists {
-		return "", ErrNotFound
+		return nil, ErrNotFound
 	}
-	return storedShortURLDto.OriginalURL, nil
+	return model.NewURL(storedShortURLDto.ShortURL, storedShortURLDto.OriginalURL), nil
 }
 
 func (f *FileRepository) GetByUserID(_ context.Context, _ string) ([]model.URL, error) {

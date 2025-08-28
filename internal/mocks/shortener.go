@@ -91,22 +91,24 @@ func (_m *Shortener) GenerateShortURLPartBatch(ctx context.Context, userID strin
 }
 
 // GetURLByShortURLPart provides a mock function with given fields: ctx, shortURLPart
-func (_m *Shortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error) {
+func (_m *Shortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (*model.URL, error) {
 	ret := _m.Called(ctx, shortURLPart)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetURLByShortURLPart")
 	}
 
-	var r0 string
+	var r0 *model.URL
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.URL, error)); ok {
 		return rf(ctx, shortURLPart)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) *model.URL); ok {
 		r0 = rf(ctx, shortURLPart)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.URL)
+		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {

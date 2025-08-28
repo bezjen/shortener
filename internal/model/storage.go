@@ -12,11 +12,13 @@ type ShortURLFileDto struct {
 type URL struct {
 	ShortURL    string
 	OriginalURL string
+	IsDeleted   bool
 }
 
 func NewURL(shortURL string, originalURL string) *URL {
 	return &URL{
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
+		IsDeleted:   false,
 	}
 }
