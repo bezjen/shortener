@@ -27,13 +27,16 @@ func NewPostgresRepository(databaseDSN string) (*PostgresRepository, error) {
 
 func (p *PostgresRepository) Save(ctx context.Context, userID string, url model.URL) error {
 	_, err := p.db.ExecContext(ctx,
-		"insert into t_short_url(short_url, original_url, user_id) values ($1, $2, $3)",
+		"insert into t_short_url(short_url, original_url, user_id) values ($1, $2, $3)"+
+			"on conflict (original_url) do update "+
+			"set short_url = EXCLUDED.short_url, user_id = EXCLUDED.user_id, is_deleted = false "+
+			"where t_short_url.is_deleted = true",
 		url.ShortURL, url.OriginalURL, userID)
 	if err != nil {
 		if isUniqueViolation(err) {
-			uniqueErr, err := p.newURLExistsError(ctx, url.OriginalURL)
-			if err != nil {
-				return err
+			uniqueErr, errConflict := p.newURLExistsError(ctx, url.OriginalURL)
+			if errConflict != nil {
+				return errConflict
 			}
 			return uniqueErr
 		}
@@ -51,12 +54,15 @@ func (p *PostgresRepository) SaveBatch(ctx context.Context, userID string, urls 
 
 	for _, url := range urls {
 		_, err = tx.ExecContext(ctx,
-			"insert into t_short_url(short_url, original_url, user_id) values ($1, $2, $3)",
+			"insert into t_short_url(short_url, original_url, user_id) values ($1, $2, $3)"+
+				"on conflict (original_url) do update "+
+				"set short_url = EXCLUDED.short_url, user_id = EXCLUDED.user_id, is_deleted = false "+
+				"where t_short_url.is_deleted = true",
 			url.ShortURL, url.OriginalURL, userID)
 		if err != nil {
-			err := tx.Rollback()
-			if err != nil {
-				return err
+			errRollback := tx.Rollback()
+			if errRollback != nil {
+				return errRollback
 			}
 			return err
 		}
