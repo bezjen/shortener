@@ -33,9 +33,9 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty12").
 		Return(model.NewURL("qwerty12", "https://practicum.yandex.ru/"), nil)
-	deletedUrl := model.NewURL("qwerty13", "https://practicum.yandex1.ru/")
-	deletedUrl.IsDeleted = true
-	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty13").Return(deletedUrl, nil)
+	deletedURL := model.NewURL("qwerty13", "https://practicum.yandex1.ru/")
+	deletedURL.IsDeleted = true
+	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty13").Return(deletedURL, nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
 	tests := []struct {
