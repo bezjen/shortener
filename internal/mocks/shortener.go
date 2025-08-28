@@ -14,6 +14,24 @@ type Shortener struct {
 	mock.Mock
 }
 
+// DeleteUserShortURLsBatch provides a mock function with given fields: ctx, userID, shortURLs
+func (_m *Shortener) DeleteUserShortURLsBatch(ctx context.Context, userID string, shortURLs []string) error {
+	ret := _m.Called(ctx, userID, shortURLs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteUserShortURLsBatch")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) error); ok {
+		r0 = rf(ctx, userID, shortURLs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GenerateShortURLPart provides a mock function with given fields: ctx, userID, url
 func (_m *Shortener) GenerateShortURLPart(ctx context.Context, userID string, url string) (string, error) {
 	ret := _m.Called(ctx, userID, url)
