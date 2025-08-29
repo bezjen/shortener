@@ -59,6 +59,6 @@ func ParseConfig() {
 	if secretKeyExists {
 		AppConfig.SecretKey = secretKey
 	} else if *flagSecretKey != "" {
-		AppConfig.SecretKey = *flagDatabaseDSN
+		AppConfig.SecretKey = *flagSecretKey
 	}
 }

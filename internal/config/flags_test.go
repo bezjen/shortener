@@ -170,6 +170,34 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 			},
 		},
+		{
+			name: "Env for secret key",
+			args: []string{"shortener.exe"},
+			env: map[string]string{
+				"SECRET_KEY": "secret_key",
+			},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "secret_key",
+			},
+		},
+		{
+			name: "Flag for secret key",
+			args: []string{"shortener.exe", "-s=secret_key1"},
+			env:  map[string]string{},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "secret_key1",
+			},
+		},
 	}
 
 	for _, tt := range tests {
