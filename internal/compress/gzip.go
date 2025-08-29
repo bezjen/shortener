@@ -27,7 +27,7 @@ func (w GzipWriter) Write(p []byte) (int, error) {
 }
 
 func (w GzipWriter) WriteHeader(statusCode int) {
-	if statusCode < http.StatusMultipleChoices || statusCode == http.StatusConflict {
+	if statusCode < http.StatusNoContent || statusCode == http.StatusConflict {
 		w.rw.Header().Set("Content-Encoding", "gzip")
 	}
 	w.rw.WriteHeader(statusCode)

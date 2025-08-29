@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -24,36 +25,74 @@ func NewPostgresRepository(databaseDSN string) (*PostgresRepository, error) {
 	}, nil
 }
 
-func (p *PostgresRepository) Save(ctx context.Context, url model.URL) error {
+func (p *PostgresRepository) Save(ctx context.Context, userID string, url model.URL) error {
 	_, err := p.db.ExecContext(ctx,
-		"insert into t_short_url(short_url, original_url) values ($1, $2)", url.ShortURL, url.OriginalURL)
+		"insert into t_short_url(short_url, original_url, user_id, is_deleted) values ($1, $2, $3, false)",
+		url.ShortURL, url.OriginalURL, userID)
 	if err != nil {
 		if isUniqueViolation(err) {
-			uniqueErr, err := p.newURLExistsError(ctx, url.OriginalURL)
-			if err != nil {
-				return err
+			var shortURL string
+			var isDeleted bool
+			row := p.db.QueryRowContext(ctx,
+				"select short_url, is_deleted from t_short_url where original_url = $1;",
+				url.OriginalURL)
+			errScan := row.Scan(&shortURL, &isDeleted)
+			if errScan != nil {
+				return errScan
 			}
-			return uniqueErr
+			if isDeleted {
+				_, errUpdate := p.db.ExecContext(ctx,
+					"update t_short_url set short_url = $1, user_id = $2, is_deleted = false where original_url = $3;",
+					url.ShortURL, userID, url.OriginalURL)
+				return errUpdate
+			}
+			return &ErrURLConflict{ShortURL: shortURL, Err: "Original URL already exists"}
 		}
 		return err
 	}
 	return nil
 }
 
-func (p *PostgresRepository) SaveBatch(ctx context.Context, urls []model.URL) error {
-	tx, err := p.db.Begin()
+func (p *PostgresRepository) SaveBatch(ctx context.Context, userID string, urls []model.URL) error {
+	if len(urls) == 0 {
+		return nil
+	}
 
+	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
 	for _, url := range urls {
-		_, err = tx.ExecContext(ctx,
-			"insert into t_short_url(short_url, original_url) values ($1, $2)", url.ShortURL, url.OriginalURL)
+		_, err = p.db.ExecContext(ctx,
+			"insert into t_short_url(short_url, original_url, user_id, is_deleted) values ($1, $2, $3, false)",
+			url.ShortURL, url.OriginalURL, userID)
 		if err != nil {
-			err := tx.Rollback()
-			if err != nil {
-				return err
+			if isUniqueViolation(err) {
+				var isDeleted bool
+				row := p.db.QueryRowContext(ctx,
+					"select is_deleted from t_short_url where original_url = $1;",
+					url.OriginalURL)
+				errScan := row.Scan(&isDeleted)
+				if errScan != nil {
+					errRollback := tx.Rollback()
+					if errRollback != nil {
+						return errRollback
+					}
+					return errScan
+				}
+				if isDeleted {
+					_, errUpdate := p.db.ExecContext(ctx,
+						"update t_short_url set short_url = $1, user_id = $2, is_deleted = false where original_url = $3;",
+						url.ShortURL, userID, url.OriginalURL)
+					if errUpdate == nil {
+						continue
+					}
+				}
+			}
+			errRollback := tx.Rollback()
+			if errRollback != nil {
+				return errRollback
 			}
 			return err
 		}
@@ -62,14 +101,66 @@ func (p *PostgresRepository) SaveBatch(ctx context.Context, urls []model.URL) er
 	return tx.Commit()
 }
 
-func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (string, error) {
-	row := p.db.QueryRowContext(ctx, "select original_url from t_short_url where short_url = $1", shortURL)
-	var originalURL string
-	err := row.Scan(&originalURL)
-	if err != nil {
-		return "", err
+func (p *PostgresRepository) DeleteBatch(ctx context.Context, _ string, shortURLs []string) error {
+	if len(shortURLs) == 0 {
+		return nil
 	}
-	return originalURL, nil
+
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.PrepareContext(ctx, "update t_short_url set is_deleted = true where short_url = any($1::text[])")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, shortURLs)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (*model.URL, error) {
+	row := p.db.QueryRowContext(ctx, "select original_url, is_deleted from t_short_url where short_url = $1", shortURL)
+	var originalURL string
+	var isDeleted bool
+	err := row.Scan(&originalURL, &isDeleted)
+	if err != nil {
+		return nil, err
+	}
+	var url = model.NewURL(shortURL, originalURL)
+	url.IsDeleted = isDeleted
+	return url, nil
+}
+
+func (p *PostgresRepository) GetByUserID(ctx context.Context, userID string) ([]model.URL, error) {
+	rows, err := p.db.QueryContext(ctx,
+		"select short_url, original_url from t_short_url where user_id = $1 and is_deleted = false",
+		userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query URLs for user %s: %w", userID, err)
+	}
+	defer rows.Close()
+	var urls []model.URL
+	for rows.Next() {
+		var url model.URL
+		err = rows.Scan(&url.ShortURL, &url.OriginalURL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan URL row: %w", err)
+		}
+		urls = append(urls, url)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+	return urls, nil
 }
 
 func (p *PostgresRepository) Ping(ctx context.Context) error {
@@ -78,16 +169,6 @@ func (p *PostgresRepository) Ping(ctx context.Context) error {
 
 func (p *PostgresRepository) Close() error {
 	return p.db.Close()
-}
-
-func (p *PostgresRepository) newURLExistsError(ctx context.Context, originalURL string) (*ErrURLConflict, error) {
-	var shortURL string
-	row := p.db.QueryRowContext(ctx, "select short_url from t_short_url where original_url = $1;", originalURL)
-	err := row.Scan(&shortURL)
-	if err != nil {
-		return nil, err
-	}
-	return &ErrURLConflict{ShortURL: shortURL, Err: "Original URL already exists"}, nil
 }
 
 func (p *PostgresRepository) getShortURLByOriginalURL(ctx context.Context, originalURL string) (string, error) {

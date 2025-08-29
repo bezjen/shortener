@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/bezjen/shortener/internal/model"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -12,16 +13,16 @@ func TestInMemoryRepositorySuccess(t *testing.T) {
 
 	tests := []struct {
 		name string
-		url  model.URL
+		url  *model.URL
 	}{
 		{
 			name: "Simple positive case",
-			url:  *model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
+			url:  model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(context.TODO(), tt.url)
+			err := repo.Save(context.TODO(), "", *tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
@@ -29,9 +30,7 @@ func TestInMemoryRepositorySuccess(t *testing.T) {
 			if err != nil {
 				t.Fatalf("GetByShortURL failed: %v", err)
 			}
-			if result != tt.url.OriginalURL {
-				t.Errorf("got %q, want %q", result, tt.url.OriginalURL)
-			}
+			assert.Equal(t, tt.url, result)
 		})
 	}
 }
@@ -53,18 +52,16 @@ func TestInMemoryRepositorySaveBatchSuccess(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.SaveBatch(context.TODO(), tt.batch)
+			err := repo.SaveBatch(context.TODO(), "", tt.batch)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
 			for _, url := range tt.batch {
-				result, err := repo.GetByShortURL(context.TODO(), url.ShortURL)
-				if err != nil {
-					t.Fatalf("GetByShortURL failed: %v", err)
+				result, errRepo := repo.GetByShortURL(context.TODO(), url.ShortURL)
+				if errRepo != nil {
+					t.Fatalf("GetByShortURL failed: %v", errRepo)
 				}
-				if result != url.OriginalURL {
-					t.Errorf("got %q, want %q", result, url.OriginalURL)
-				}
+				assert.Equal(t, url, *result)
 			}
 		})
 	}
@@ -84,11 +81,11 @@ func TestInMemoryRepositoryErrConflict(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(context.TODO(), tt.url)
+			err := repo.Save(context.TODO(), "", tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.Save(context.TODO(), tt.url)
+			err = repo.Save(context.TODO(), "", tt.url)
 			if !errors.Is(err, ErrShortURLConflict) {
 				t.Errorf("got %v, want %v", err, ErrShortURLConflict)
 			}
@@ -119,11 +116,11 @@ func TestInMemoryRepositorySaveBatchErrConflict(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.SaveBatch(context.TODO(), tt.batch)
+			err := repo.SaveBatch(context.TODO(), "", tt.batch)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.SaveBatch(context.TODO(), tt.batch)
+			err = repo.SaveBatch(context.TODO(), "", tt.batch)
 			if !errors.Is(err, ErrShortURLConflict) {
 				t.Errorf("got %v, want %v", err, ErrShortURLConflict)
 			}

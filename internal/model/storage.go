@@ -6,16 +6,19 @@ type ShortURLFileDto struct {
 	ID          uuid.UUID `json:"uuid"`
 	ShortURL    string    `json:"short_url"`
 	OriginalURL string    `json:"original_url"`
+	UserID      string    `json:"user_id"`
 }
 
 type URL struct {
 	ShortURL    string
 	OriginalURL string
+	IsDeleted   bool
 }
 
 func NewURL(shortURL string, originalURL string) *URL {
 	return &URL{
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
+		IsDeleted:   false,
 	}
 }

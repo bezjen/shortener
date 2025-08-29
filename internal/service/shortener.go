@@ -1,13 +1,15 @@
-//go:generate mockery --name=Shortener --output=../mocks --case=underscore
 package service
 
 import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
+	"go.uber.org/zap"
 	"math/big"
+	"sync"
 )
 
 const (
@@ -19,30 +21,47 @@ const (
 var ErrGenerate = errors.New("failed to generate short url")
 
 type Shortener interface {
-	GenerateShortURLPart(ctx context.Context, url string) (string, error)
-	GenerateShortURLPartBatch(ctx context.Context,
+	GenerateShortURLPart(ctx context.Context, userID string, url string) (string, error)
+	GenerateShortURLPartBatch(ctx context.Context, userID string,
 		urls []model.ShortenBatchRequestItem) ([]model.ShortenBatchResponseItem, error)
-	GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error)
+	DeleteUserShortURLsBatch(ctx context.Context, userID string, shortURLs []string) error
+	GetURLByShortURLPart(ctx context.Context, shortURLPart string) (*model.URL, error)
+	GetURLsByUserID(ctx context.Context, userID string) ([]model.URL, error)
 	PingRepository(ctx context.Context) error
 }
 
 type URLShortener struct {
-	storage repository.Repository
+	storage     repository.Repository
+	logger      *logger.Logger
+	deleteQueue chan deleteTask
+	wg          sync.WaitGroup
 }
 
-func NewURLShortener(storage repository.Repository) *URLShortener {
-	return &URLShortener{
-		storage: storage,
+type deleteTask struct {
+	userID    string
+	shortURLs []string
+}
+
+func NewURLShortener(storage repository.Repository, logger *logger.Logger) *URLShortener {
+	shortener := &URLShortener{
+		storage:     storage,
+		logger:      logger,
+		deleteQueue: make(chan deleteTask, 1000),
 	}
+	for i := 0; i < 5; i++ {
+		shortener.wg.Add(1)
+		go shortener.deleteWorker()
+	}
+	return shortener
 }
 
-func (u *URLShortener) GenerateShortURLPart(ctx context.Context, url string) (string, error) {
+func (u *URLShortener) GenerateShortURLPart(ctx context.Context, userID string, url string) (string, error) {
 	for i := 0; i < maxAttemptsCount; i++ {
 		shortURL, err := generateRandomString(shortURLLength)
 		if err != nil {
 			return "", err
 		}
-		err = u.storage.Save(ctx, *model.NewURL(shortURL, url))
+		err = u.storage.Save(ctx, userID, *model.NewURL(shortURL, url))
 		if err != nil {
 			if errors.Is(err, repository.ErrShortURLConflict) {
 				continue
@@ -55,6 +74,7 @@ func (u *URLShortener) GenerateShortURLPart(ctx context.Context, url string) (st
 }
 
 func (u *URLShortener) GenerateShortURLPartBatch(ctx context.Context,
+	userID string,
 	urls []model.ShortenBatchRequestItem,
 ) ([]model.ShortenBatchResponseItem, error) {
 	for i := 0; i < maxAttemptsCount; i++ {
@@ -68,7 +88,7 @@ func (u *URLShortener) GenerateShortURLPartBatch(ctx context.Context,
 			generatedURLs = append(generatedURLs, *model.NewURL(shortURL, url.OriginalURL))
 			response = append(response, *model.NewShortenBatchResponseItem(url.CorrelationID, shortURL))
 		}
-		err := u.storage.SaveBatch(ctx, generatedURLs)
+		err := u.storage.SaveBatch(ctx, userID, generatedURLs)
 		if err != nil {
 			if errors.Is(err, repository.ErrShortURLConflict) {
 				continue
@@ -80,16 +100,49 @@ func (u *URLShortener) GenerateShortURLPartBatch(ctx context.Context,
 	return nil, ErrGenerate
 }
 
-func (u *URLShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (string, error) {
+func (u *URLShortener) DeleteUserShortURLsBatch(_ context.Context, userID string, shortURLs []string) error {
+	select {
+	case u.deleteQueue <- deleteTask{userID: userID, shortURLs: shortURLs}:
+		return nil
+	default:
+		return errors.New("delete queue is full")
+	}
+}
+
+func (u *URLShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (*model.URL, error) {
 	resultURL, err := u.storage.GetByShortURL(ctx, shortURLPart)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return resultURL, nil
 }
 
+func (u *URLShortener) GetURLsByUserID(ctx context.Context, userID string) ([]model.URL, error) {
+	return u.storage.GetByUserID(ctx, userID)
+}
+
 func (u *URLShortener) PingRepository(ctx context.Context) error {
 	return u.storage.Ping(ctx)
+}
+
+func (u *URLShortener) Close() {
+	close(u.deleteQueue)
+	u.wg.Wait()
+}
+
+func (u *URLShortener) deleteWorker() {
+	defer u.wg.Done()
+
+	for task := range u.deleteQueue {
+		err := u.storage.DeleteBatch(context.Background(), task.userID, task.shortURLs)
+		if err != nil {
+			u.logger.Error("Failed to delete short urls for user",
+				zap.Error(err),
+				zap.Strings("shortURLs", task.shortURLs),
+				zap.String("userID", task.userID))
+			continue
+		}
+	}
 }
 
 func generateRandomString(length int) (string, error) {

@@ -32,27 +32,77 @@ func (_m *Repository) Close() error {
 	return r0
 }
 
+// DeleteBatch provides a mock function with given fields: ctx, userID, shortURLs
+func (_m *Repository) DeleteBatch(ctx context.Context, userID string, shortURLs []string) error {
+	ret := _m.Called(ctx, userID, shortURLs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteBatch")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) error); ok {
+		r0 = rf(ctx, userID, shortURLs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetByShortURL provides a mock function with given fields: ctx, id
-func (_m *Repository) GetByShortURL(ctx context.Context, id string) (string, error) {
+func (_m *Repository) GetByShortURL(ctx context.Context, id string) (*model.URL, error) {
 	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetByShortURL")
 	}
 
-	var r0 string
+	var r0 *model.URL
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.URL, error)); ok {
 		return rf(ctx, id)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) *model.URL); ok {
 		r0 = rf(ctx, id)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.URL)
+		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
 		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetByUserID provides a mock function with given fields: ctx, userID
+func (_m *Repository) GetByUserID(ctx context.Context, userID string) ([]model.URL, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetByUserID")
+	}
+
+	var r0 []model.URL
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]model.URL, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []model.URL); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.URL)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, userID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -78,17 +128,17 @@ func (_m *Repository) Ping(ctx context.Context) error {
 	return r0
 }
 
-// Save provides a mock function with given fields: ctx, url
-func (_m *Repository) Save(ctx context.Context, url model.URL) error {
-	ret := _m.Called(ctx, url)
+// Save provides a mock function with given fields: ctx, userID, url
+func (_m *Repository) Save(ctx context.Context, userID string, url model.URL) error {
+	ret := _m.Called(ctx, userID, url)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Save")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, model.URL) error); ok {
-		r0 = rf(ctx, url)
+	if rf, ok := ret.Get(0).(func(context.Context, string, model.URL) error); ok {
+		r0 = rf(ctx, userID, url)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -96,17 +146,17 @@ func (_m *Repository) Save(ctx context.Context, url model.URL) error {
 	return r0
 }
 
-// SaveBatch provides a mock function with given fields: ctx, urls
-func (_m *Repository) SaveBatch(ctx context.Context, urls []model.URL) error {
-	ret := _m.Called(ctx, urls)
+// SaveBatch provides a mock function with given fields: ctx, userID, urls
+func (_m *Repository) SaveBatch(ctx context.Context, userID string, urls []model.URL) error {
+	ret := _m.Called(ctx, userID, urls)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SaveBatch")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []model.URL) error); ok {
-		r0 = rf(ctx, urls)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []model.URL) error); ok {
+		r0 = rf(ctx, userID, urls)
 	} else {
 		r0 = ret.Error(0)
 	}

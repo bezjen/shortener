@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/logger"
+	"github.com/bezjen/shortener/internal/middleware"
 	"github.com/bezjen/shortener/internal/mocks"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/go-chi/chi/v5"
@@ -31,7 +32,10 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty12").
-		Return("https://practicum.yandex.ru/", nil)
+		Return(model.NewURL("qwerty12", "https://practicum.yandex.ru/"), nil)
+	deletedURL := model.NewURL("qwerty13", "https://practicum.yandex1.ru/")
+	deletedURL.IsDeleted = true
+	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty13").Return(deletedURL, nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
 	tests := []struct {
@@ -56,6 +60,14 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 			expectedCode:        http.StatusBadRequest,
 			expectedContentType: "",
 			expectedBody:        "short url is empty\n",
+			expectedLocation:    "",
+		},
+		{
+			name:                "Deleted url",
+			path:                "qwerty13",
+			expectedCode:        http.StatusGone,
+			expectedContentType: "",
+			expectedBody:        "",
 			expectedLocation:    "",
 		},
 	}
@@ -90,7 +102,7 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(mocks.Shortener)
-	mockShortener.On("GenerateShortURLPart", mock.Anything, "https://practicum.yandex.ru/").
+	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
@@ -140,7 +152,7 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(mocks.Shortener)
-	mockShortener.On("GenerateShortURLPart", mock.Anything, "https://practicum.yandex.ru/").
+	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
@@ -197,11 +209,13 @@ func TestHandlePostShortURLBatchJSON(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(mocks.Shortener)
-	mockShortener.On("GenerateShortURLPartBatch", mock.Anything, []model.ShortenBatchRequestItem{
-		*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
-	}).Return([]model.ShortenBatchResponseItem{
-		*model.NewShortenBatchResponseItem("123", "qwerty12"),
-	}, nil)
+	mockShortener.On("GenerateShortURLPartBatch", mock.Anything, mock.Anything,
+		[]model.ShortenBatchRequestItem{*model.NewShortenBatchRequestItem(
+			"123", "https://practicum.yandex.ru/"),
+		}).Return(
+		[]model.ShortenBatchResponseItem{
+			*model.NewShortenBatchResponseItem("123", "qwerty12"),
+		}, nil)
 	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
 
 	tests := []struct {
@@ -248,6 +262,105 @@ func TestHandlePostShortURLBatchJSON(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
 			contentType := res.Header.Get("Content-Type")
 			assert.True(t, strings.HasPrefix(contentType, "application/json"), "Content-Type didn't match expected")
+			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
+		})
+	}
+}
+
+func TestHandleGetUserURLsJSON(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+
+	tests := []struct {
+		name         string
+		mockSetup    func(*mocks.Shortener)
+		setupRequest func(*http.Request)
+		expectedCode int
+		expectedBody string
+		expectJSON   bool
+	}{
+		{
+			name: "Simple positive case",
+			mockSetup: func(m *mocks.Shortener) {
+				m.On("GetURLsByUserID", mock.Anything, "user123").Return(
+					[]model.URL{
+						*model.NewURL("qwerty12", "https://example.com/page1"),
+						*model.NewURL("qwerty34", "https://example.com/page2"),
+					}, nil)
+			},
+			setupRequest: func(req *http.Request) {
+				ctx := context.WithValue(req.Context(), middleware.UserIDKey, "user123")
+				*req = *req.WithContext(ctx)
+			},
+			expectedCode: http.StatusOK,
+			expectedBody: `[{"short_url":"http://localhost:8080/qwerty12","original_url":"https://example.com/page1"},{"short_url":"http://localhost:8080/qwerty34","original_url":"https://example.com/page2"}]` + "\n",
+			expectJSON:   true,
+		},
+		{
+			name: "No URLs for user - 204 No Content",
+			mockSetup: func(m *mocks.Shortener) {
+				m.On("GetURLsByUserID", mock.Anything, "user123").Return([]model.URL{}, nil)
+			},
+			setupRequest: func(req *http.Request) {
+				ctx := context.WithValue(req.Context(), middleware.UserIDKey, "user123")
+				*req = *req.WithContext(ctx)
+			},
+			expectedCode: http.StatusNoContent,
+			expectedBody: "",
+			expectJSON:   false,
+		},
+		{
+			name: "Unauthorized - no cookie",
+			mockSetup: func(m *mocks.Shortener) {
+			},
+			setupRequest: func(req *http.Request) {
+			},
+			expectedCode: http.StatusUnauthorized,
+			expectedBody: `{"error":"Unauthorized"}` + "\n",
+			expectJSON:   true,
+		},
+		{
+			name: "Unauthorized - invalid cookie",
+			mockSetup: func(m *mocks.Shortener) {
+			},
+			setupRequest: func(req *http.Request) {
+				req.AddCookie(&http.Cookie{Name: "user_token", Value: ""})
+			},
+			expectedCode: http.StatusUnauthorized,
+			expectedBody: `{"error":"Unauthorized"}` + "\n",
+			expectJSON:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockShortener := new(mocks.Shortener)
+			tt.mockSetup(mockShortener)
+
+			h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
+			if tt.setupRequest != nil {
+				tt.setupRequest(req)
+			}
+
+			rr := httptest.NewRecorder()
+
+			h.HandleGetUserURLsJSON(rr, req)
+
+			res := rr.Result()
+			defer res.Body.Close()
+
+			resBody, _ := io.ReadAll(res.Body)
+
+			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
+
+			if tt.expectJSON {
+				contentType := res.Header.Get("Content-Type")
+				assert.True(t, strings.HasPrefix(contentType, "application/json"),
+					"Content-Type didn't match expected, got: %s", contentType)
+			}
+
 			assert.Equal(t, tt.expectedBody, string(resBody), "Body didn't match expected")
 		})
 	}

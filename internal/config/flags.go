@@ -11,6 +11,7 @@ type Config struct {
 	LogLevel        string
 	FileStoragePath string
 	DatabaseDSN     string
+	SecretKey       string
 }
 
 var AppConfig Config
@@ -21,6 +22,7 @@ func ParseConfig() {
 	flagLogLevel := flag.String("l", "info", "log level")
 	flagFileStoragePath := flag.String("f", "", "path to file with data")
 	flagDatabaseDSN := flag.String("d", "", "postgres data source name in format `postgres://username:password@host:port/database_name?sslmode=disable`")
+	flagSecretKey := flag.String("s", "", "authorization secret key")
 	flag.Parse()
 
 	addr, addrExists := os.LookupEnv("SERVER_ADDRESS")
@@ -52,5 +54,11 @@ func ParseConfig() {
 		AppConfig.DatabaseDSN = databaseDSN
 	} else {
 		AppConfig.DatabaseDSN = *flagDatabaseDSN
+	}
+	secretKey, secretKeyExists := os.LookupEnv("SECRET_KEY")
+	if secretKeyExists {
+		AppConfig.SecretKey = secretKey
+	} else if *flagSecretKey != "" {
+		AppConfig.SecretKey = *flagSecretKey
 	}
 }

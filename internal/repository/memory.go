@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"github.com/bezjen/shortener/internal/model"
 	"sync"
 )
@@ -17,7 +18,7 @@ func NewInMemoryRepository() *InMemoryRepository {
 	}
 }
 
-func (m *InMemoryRepository) Save(_ context.Context, url model.URL) error {
+func (m *InMemoryRepository) Save(_ context.Context, _ string, url model.URL) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, exists := m.storage[url.ShortURL]; exists {
@@ -27,7 +28,7 @@ func (m *InMemoryRepository) Save(_ context.Context, url model.URL) error {
 	return nil
 }
 
-func (m *InMemoryRepository) SaveBatch(_ context.Context, urls []model.URL) error {
+func (m *InMemoryRepository) SaveBatch(_ context.Context, _ string, urls []model.URL) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, url := range urls {
@@ -41,14 +42,22 @@ func (m *InMemoryRepository) SaveBatch(_ context.Context, urls []model.URL) erro
 	return nil
 }
 
-func (m *InMemoryRepository) GetByShortURL(_ context.Context, shortURL string) (string, error) {
+func (m *InMemoryRepository) GetByShortURL(_ context.Context, shortURL string) (*model.URL, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	storedURL, exists := m.storage[shortURL]
 	if !exists {
-		return "", ErrNotFound
+		return nil, ErrNotFound
 	}
-	return storedURL, nil
+	return model.NewURL(shortURL, storedURL), nil
+}
+
+func (m *InMemoryRepository) GetByUserID(_ context.Context, _ string) ([]model.URL, error) {
+	return nil, fmt.Errorf("method not implemented")
+}
+
+func (m *InMemoryRepository) DeleteBatch(_ context.Context, _ string, _ []string) error {
+	return fmt.Errorf("method not implemented")
 }
 
 func (m *InMemoryRepository) Ping(_ context.Context) error {

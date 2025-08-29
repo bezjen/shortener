@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/google/uuid"
@@ -37,7 +38,7 @@ func NewFileRepository(cfg config.Config) (*FileRepository, error) {
 	}, nil
 }
 
-func (f *FileRepository) Save(_ context.Context, url model.URL) error {
+func (f *FileRepository) Save(_ context.Context, _ string, url model.URL) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if _, exists := f.memoryStorage[url.ShortURL]; exists {
@@ -51,7 +52,7 @@ func (f *FileRepository) Save(_ context.Context, url model.URL) error {
 	return nil
 }
 
-func (f *FileRepository) SaveBatch(_ context.Context, urls []model.URL) error {
+func (f *FileRepository) SaveBatch(_ context.Context, _ string, urls []model.URL) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, url := range urls {
@@ -74,14 +75,22 @@ func (f *FileRepository) SaveBatch(_ context.Context, urls []model.URL) error {
 	return nil
 }
 
-func (f *FileRepository) GetByShortURL(_ context.Context, shortURL string) (string, error) {
+func (f *FileRepository) GetByShortURL(_ context.Context, shortURL string) (*model.URL, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	storedShortURLDto, exists := f.memoryStorage[shortURL]
 	if !exists {
-		return "", ErrNotFound
+		return nil, ErrNotFound
 	}
-	return storedShortURLDto.OriginalURL, nil
+	return model.NewURL(storedShortURLDto.ShortURL, storedShortURLDto.OriginalURL), nil
+}
+
+func (f *FileRepository) GetByUserID(_ context.Context, _ string) ([]model.URL, error) {
+	return nil, fmt.Errorf("method not implemented")
+}
+
+func (f *FileRepository) DeleteBatch(_ context.Context, _ string, _ []string) error {
+	return fmt.Errorf("method not implemented")
 }
 
 func (f *FileRepository) Ping(_ context.Context) error {

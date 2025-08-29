@@ -6,6 +6,7 @@ import (
 	"github.com/bezjen/shortener/internal/mocks"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -13,9 +14,11 @@ import (
 
 func TestGenerateShortURLPart(t *testing.T) {
 	mockPositiveRepo := new(mocks.Repository)
-	mockPositiveRepo.On("Save", mock.Anything, mock.Anything).Return(nil)
+	mockPositiveRepo.On("Save", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil)
 	mockCollisionRepo := new(mocks.Repository)
-	mockCollisionRepo.On("Save", mock.Anything, mock.Anything).Return(repository.ErrShortURLConflict)
+	mockCollisionRepo.On("Save", mock.Anything, mock.Anything, mock.Anything).
+		Return(repository.ErrShortURLConflict)
 	tests := []struct {
 		name    string
 		storage repository.Repository
@@ -41,7 +44,11 @@ func TestGenerateShortURLPart(t *testing.T) {
 			u := &URLShortener{
 				storage: tt.storage,
 			}
-			shortURL, err := u.GenerateShortURLPart(context.TODO(), tt.url)
+			userID, err := uuid.NewUUID()
+			if err != nil {
+				t.Fatalf("Failed to generate uuid: %v", err)
+			}
+			shortURL, err := u.GenerateShortURLPart(context.TODO(), userID.String(), tt.url)
 			if err != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)
@@ -55,9 +62,11 @@ func TestGenerateShortURLPart(t *testing.T) {
 
 func TestGenerateShortURLPartBatch(t *testing.T) {
 	mockPositiveRepo := new(mocks.Repository)
-	mockPositiveRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(nil)
+	mockPositiveRepo.On("SaveBatch", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil)
 	mockCollisionRepo := new(mocks.Repository)
-	mockCollisionRepo.On("SaveBatch", mock.Anything, mock.Anything).Return(repository.ErrShortURLConflict)
+	mockCollisionRepo.On("SaveBatch", mock.Anything, mock.Anything, mock.Anything).
+		Return(repository.ErrShortURLConflict)
 	tests := []struct {
 		name    string
 		storage repository.Repository
@@ -87,7 +96,11 @@ func TestGenerateShortURLPartBatch(t *testing.T) {
 			u := &URLShortener{
 				storage: tt.storage,
 			}
-			shortURL, err := u.GenerateShortURLPartBatch(context.TODO(), tt.urls)
+			userID, err := uuid.NewUUID()
+			if err != nil {
+				t.Fatalf("Failed to generate uuid: %v", err)
+			}
+			shortURL, err := u.GenerateShortURLPartBatch(context.TODO(), userID.String(), tt.urls)
 			if err != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("GenerateShortURLPart() error = %v, wantErr %v", err, tt.wantErr)
@@ -102,30 +115,30 @@ func TestGenerateShortURLPartBatch(t *testing.T) {
 func TestGetURLByShortURLPart(t *testing.T) {
 	mockRepoPositive := new(mocks.Repository)
 	mockRepoPositive.On("GetByShortURL", mock.Anything, "qwerty12").
-		Return("https://practicum.yandex.ru/", nil)
+		Return(model.NewURL("qwerty12", "https://practicum.yandex.ru/"), nil)
 	mockRepoNotFound := new(mocks.Repository)
 	mockRepoNotFound.On("GetByShortURL", mock.Anything, "qwerty12").
-		Return("", repository.ErrNotFound)
+		Return(nil, repository.ErrNotFound)
 
 	tests := []struct {
 		name         string
 		storage      repository.Repository
 		shortURLPart string
-		want         string
+		want         *model.URL
 		wantErr      error
 	}{
 		{
 			name:         "Simple positive case",
 			storage:      mockRepoPositive,
 			shortURLPart: "qwerty12",
-			want:         "https://practicum.yandex.ru/",
+			want:         model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 			wantErr:      nil,
 		},
 		{
-			name:         "Url not found case",
+			name:         "URL not found case",
 			storage:      mockRepoNotFound,
 			shortURLPart: "qwerty12",
-			want:         "",
+			want:         nil,
 			wantErr:      repository.ErrNotFound,
 		},
 	}
@@ -141,9 +154,7 @@ func TestGetURLByShortURLPart(t *testing.T) {
 				}
 				return
 			}
-			if got != tt.want {
-				t.Errorf("GetURLByShortURLPart() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

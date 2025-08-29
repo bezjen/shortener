@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/model"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 )
@@ -24,16 +25,16 @@ func TestFileRepositorySuccess(t *testing.T) {
 
 	tests := []struct {
 		name string
-		url  model.URL
+		url  *model.URL
 	}{
 		{
 			name: "Simple positive case",
-			url:  *model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
+			url:  model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(context.TODO(), tt.url)
+			err := repo.Save(context.TODO(), "", *tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
@@ -41,9 +42,7 @@ func TestFileRepositorySuccess(t *testing.T) {
 			if err != nil {
 				t.Fatalf("GetByShortURL failed: %v", err)
 			}
-			if result != tt.url.OriginalURL {
-				t.Errorf("got %q, want %q", result, tt.url.OriginalURL)
-			}
+			assert.Equal(t, tt.url, result)
 		})
 	}
 }
@@ -63,11 +62,11 @@ func TestFileRepositoryErrConflict(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repo.Save(context.TODO(), tt.url)
+			err := repo.Save(context.TODO(), "", tt.url)
 			if err != nil {
 				t.Fatalf("Save failed: %v", err)
 			}
-			err = repo.Save(context.TODO(), tt.url)
+			err = repo.Save(context.TODO(), "", tt.url)
 			if !errors.Is(err, ErrShortURLConflict) {
 				t.Errorf("got %v, want %v", err, ErrShortURLConflict)
 			}

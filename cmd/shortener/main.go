@@ -30,20 +30,22 @@ func main() {
 		return
 	}
 	defer func(storage repository.Repository) {
-		err := storage.Close()
+		err = storage.Close()
 		if err != nil {
 			log.Printf("Error during storage close cleanly: %v", err)
 		}
 	}(storage)
-	urlShortener := service.NewURLShortener(storage)
+	urlShortener := service.NewURLShortener(storage, shortenerLogger)
+	defer urlShortener.Close()
+	authorizer := service.NewAuthorizer([]byte(cfg.SecretKey), shortenerLogger)
 	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener)
-	shortenerRouter := router.NewRouter(shortenerLogger, *shortenerHandler)
+	shortenerRouter := router.NewRouter(shortenerLogger, authorizer, *shortenerHandler)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
-		if err := http.ListenAndServe(cfg.ServerAddr, shortenerRouter); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err = http.ListenAndServe(cfg.ServerAddr, shortenerRouter); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("Server failed to start: %v", err)
 			cancel()
 		}
