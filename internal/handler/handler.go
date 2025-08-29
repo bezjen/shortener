@@ -115,9 +115,11 @@ func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r
 		return
 	}
 
-	if err := h.validateBatchURLs(request); err != nil {
-		h.writeShortenJSONErrorResponse(rw, http.StatusBadRequest, "incorrect url")
-		return
+	for _, requestItem := range request {
+		if err = h.validateURL(requestItem.OriginalURL); err != nil {
+			h.writeShortenJSONErrorResponse(rw, http.StatusBadRequest, "incorrect url "+requestItem.OriginalURL)
+			return
+		}
 	}
 
 	shortURLs, err := h.shortener.GenerateShortURLPartBatch(r.Context(), userID, request)
@@ -276,15 +278,6 @@ func (h *ShortenerHandler) decodeBatchRequest(r *http.Request) ([]model.ShortenB
 	var request []model.ShortenBatchRequestItem
 	err := json.NewDecoder(r.Body).Decode(&request)
 	return request, err
-}
-
-func (h *ShortenerHandler) validateBatchURLs(request []model.ShortenBatchRequestItem) error {
-	for _, requestItem := range request {
-		if err := h.validateURL(requestItem.OriginalURL); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (h *ShortenerHandler) buildBatchResponse(shortURLs []model.ShortenBatchResponseItem) []model.ShortenBatchResponseItem {
