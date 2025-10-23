@@ -12,6 +12,7 @@ import (
 	"github.com/bezjen/shortener/internal/service"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 )
 
 func main() {

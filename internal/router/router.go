@@ -6,6 +6,7 @@ import (
 	"github.com/bezjen/shortener/internal/middleware"
 	"github.com/bezjen/shortener/internal/service"
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 func NewRouter(logger *logger.Logger,
@@ -15,13 +16,10 @@ func NewRouter(logger *logger.Logger,
 	r := chi.NewRouter()
 	authMiddleware := middleware.NewAuthMiddleware(authorizer, logger)
 	loggingMiddleware := middleware.NewLoggingMiddleware(logger)
-	gzipMiddleware := middleware.NewGzipMiddleware(logger)
 
 	r.Use(
 		authMiddleware.WithAuth,
-		loggingMiddleware.WithLogging,
-		gzipMiddleware.WithGzipRequestDecompression,
-		gzipMiddleware.WithGzipResponseCompression)
+		loggingMiddleware.WithLogging)
 
 	r.Post("/", shortenerHandler.HandlePostShortURLTextPlain)
 	r.Get("/ping", shortenerHandler.HandlePingRepository)
@@ -30,6 +28,8 @@ func NewRouter(logger *logger.Logger,
 	r.Post("/api/shorten/batch", shortenerHandler.HandlePostShortURLBatchJSON)
 	r.Get("/api/user/urls", shortenerHandler.HandleGetUserURLsJSON)
 	r.Delete("/api/user/urls", shortenerHandler.HandleDeleteShortURLsBatchJSON)
+
+	r.Mount("/debug", chimiddleware.Profiler())
 
 	return r
 }
