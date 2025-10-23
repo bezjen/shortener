@@ -26,7 +26,7 @@ func ParseConfig() {
 	flagDatabaseDSN := flag.String("d", "", "postgres data source name in format `postgres://username:password@host:port/database_name?sslmode=disable`")
 	flagSecretKey := flag.String("s", "", "authorization secret key")
 	flagAuditFile := flag.String("audit-file", "", "path to audit file")
-	flagAuditUrl := flag.String("audit-url", "", "audit url")
+	flagAuditURL := flag.String("audit-url", "", "audit url")
 	flag.Parse()
 
 	addr, addrExists := os.LookupEnv("SERVER_ADDRESS")
@@ -74,7 +74,7 @@ func ParseConfig() {
 	auditURL, auditURLExists := os.LookupEnv("AUDIT_URL")
 	if auditURLExists {
 		AppConfig.AuditURL = auditURL
-	} else if *flagAuditUrl != "" {
-		AppConfig.AuditURL = *flagAuditUrl
+	} else if *flagAuditURL != "" {
+		AppConfig.AuditURL = *flagAuditURL
 	}
 }
