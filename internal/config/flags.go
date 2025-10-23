@@ -12,6 +12,8 @@ type Config struct {
 	FileStoragePath string
 	DatabaseDSN     string
 	SecretKey       string
+	AuditFile       string
+	AuditURL        string
 }
 
 var AppConfig Config
@@ -23,6 +25,8 @@ func ParseConfig() {
 	flagFileStoragePath := flag.String("f", "", "path to file with data")
 	flagDatabaseDSN := flag.String("d", "", "postgres data source name in format `postgres://username:password@host:port/database_name?sslmode=disable`")
 	flagSecretKey := flag.String("s", "", "authorization secret key")
+	flagAuditFile := flag.String("audit-file", "", "path to audit file")
+	flagAuditUrl := flag.String("audit-url", "", "audit url")
 	flag.Parse()
 
 	addr, addrExists := os.LookupEnv("SERVER_ADDRESS")
@@ -60,5 +64,17 @@ func ParseConfig() {
 		AppConfig.SecretKey = secretKey
 	} else if *flagSecretKey != "" {
 		AppConfig.SecretKey = *flagSecretKey
+	}
+	auditFile, auditFileExists := os.LookupEnv("AUDIT_FILE")
+	if auditFileExists {
+		AppConfig.AuditFile = auditFile
+	} else if *flagAuditFile != "" {
+		AppConfig.AuditFile = *flagAuditFile
+	}
+	auditURL, auditURLExists := os.LookupEnv("AUDIT_URL")
+	if auditURLExists {
+		AppConfig.AuditURL = auditURL
+	} else if *flagAuditUrl != "" {
+		AppConfig.AuditURL = *flagAuditUrl
 	}
 }

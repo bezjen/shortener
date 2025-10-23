@@ -24,6 +24,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -37,6 +39,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -53,6 +57,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -68,6 +74,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -84,6 +92,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -99,6 +109,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -112,6 +124,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -127,6 +141,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "./storage_new.json",
 				DatabaseDSN:     "",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -140,6 +156,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "./storage_new.json",
 				DatabaseDSN:     "",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -155,6 +173,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "ds",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -168,6 +188,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "ds",
 				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -183,6 +205,8 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "",
 				SecretKey:       "secret_key",
+				AuditFile:       "",
+				AuditURL:        "",
 			},
 		},
 		{
@@ -196,6 +220,72 @@ func TestParseFlags(t *testing.T) {
 				FileStoragePath: "",
 				DatabaseDSN:     "",
 				SecretKey:       "secret_key1",
+				AuditFile:       "",
+				AuditURL:        "",
+			},
+		},
+		{
+			name: "Env for audit file",
+			args: []string{"shortener.exe"},
+			env: map[string]string{
+				"AUDIT_FILE": "file_path",
+			},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "file_path",
+				AuditURL:        "",
+			},
+		},
+		{
+			name: "Flag for audit file",
+			args: []string{"shortener.exe", "--audit-file=file_path"},
+			env:  map[string]string{},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "file_path",
+				AuditURL:        "",
+			},
+		},
+		{
+			name: "Env for audit url",
+			args: []string{"shortener.exe"},
+			env: map[string]string{
+				"AUDIT_URL": "audit_url",
+			},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "audit_url",
+			},
+		},
+		{
+			name: "Flag for audit url",
+			args: []string{"shortener.exe", "--audit-url=audit_url"},
+			env:  map[string]string{},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "audit_url",
 			},
 		},
 	}
