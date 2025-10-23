@@ -1,9 +1,9 @@
-package service
+package service_test
 
 import (
 	"encoding/json"
 	"github.com/bezjen/shortener/internal/model"
-	service2 "github.com/bezjen/shortener/internal/service"
+	"github.com/bezjen/shortener/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -29,7 +29,7 @@ func TestAuditURL_Notify_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	auditURL := service2.NewAuditURL(server.URL)
+	auditURL := service.NewAuditURL(server.URL)
 
 	expectedEvent := model.AuditEvent{
 		TS:     time.Now().Unix(),
@@ -50,7 +50,7 @@ func TestAuditURL_Notify_Success(t *testing.T) {
 }
 
 func TestAuditURL_Notify_InvalidURL(t *testing.T) {
-	auditURL := service2.NewAuditURL("invalid-url")
+	auditURL := service.NewAuditURL("invalid-url")
 
 	event := model.AuditEvent{
 		TS:     time.Now().Unix(),

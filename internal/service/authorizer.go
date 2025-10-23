@@ -22,6 +22,11 @@ type JWTAuthorizer struct {
 	logger    *logger.Logger
 }
 
+type ShortenerClaims struct {
+	UserID string `json:"userID"`
+	jwt.RegisteredClaims
+}
+
 func NewAuthorizer(secretKey []byte, logger *logger.Logger) *JWTAuthorizer {
 	return &JWTAuthorizer{
 		secretKey: secretKey,
@@ -30,7 +35,7 @@ func NewAuthorizer(secretKey []byte, logger *logger.Logger) *JWTAuthorizer {
 }
 
 func (a *JWTAuthorizer) CreateToken(userID string) (string, error) {
-	claims := shortenerClaims{
+	claims := ShortenerClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)),
@@ -51,7 +56,7 @@ func (a *JWTAuthorizer) CreateToken(userID string) (string, error) {
 }
 
 func (a *JWTAuthorizer) ValidateToken(tokenString string) (string, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &shortenerClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &ShortenerClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			a.logger.Error("Unexpected signing method")
 			return nil, ErrValidate
@@ -64,15 +69,10 @@ func (a *JWTAuthorizer) ValidateToken(tokenString string) (string, error) {
 		return "", ErrValidate
 	}
 
-	if claims, ok := token.Claims.(*shortenerClaims); ok && token.Valid {
+	if claims, ok := token.Claims.(*ShortenerClaims); ok && token.Valid {
 		return claims.UserID, nil
 	}
 
 	a.logger.Error("Invalid token", zap.String("token", tokenString))
 	return "", ErrValidate
-}
-
-type shortenerClaims struct {
-	UserID string `json:"userID"`
-	jwt.RegisteredClaims
 }

@@ -1,9 +1,9 @@
-package service
+package service_test
 
 import (
 	"encoding/json"
 	"github.com/bezjen/shortener/internal/model"
-	service2 "github.com/bezjen/shortener/internal/service"
+	"github.com/bezjen/shortener/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -17,7 +17,7 @@ func TestAuditFile_Notify(t *testing.T) {
 	defer os.Remove(tmpFile.Name())
 	tmpFile.Close()
 
-	auditFile := service2.NewAuditFile(tmpFile.Name())
+	auditFile := service.NewAuditFile(tmpFile.Name())
 
 	event := model.AuditEvent{
 		TS:     time.Now().Unix(),
@@ -43,7 +43,7 @@ func TestAuditFile_Notify(t *testing.T) {
 }
 
 func TestAuditFile_Notify_InvalidPath(t *testing.T) {
-	auditFile := service2.NewAuditFile("/invalid/pathaudit.log")
+	auditFile := service.NewAuditFile("/invalid/pathaudit.log")
 
 	event := model.AuditEvent{
 		TS:     time.Now().Unix(),
