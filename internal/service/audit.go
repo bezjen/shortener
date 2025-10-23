@@ -3,6 +3,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/model"
 	"go.uber.org/zap"
@@ -26,6 +27,17 @@ func NewShortenerAuditService(logger *logger.Logger) *ShortenerAuditService {
 	return &ShortenerAuditService{
 		observers: make([]AuditObserver, 0),
 		logger:    logger,
+	}
+}
+
+func (a *ShortenerAuditService) ConfigureObservers(cfg config.Config) {
+	if cfg.AuditFile != "" {
+		fileAudit := NewAuditFile(cfg.AuditFile)
+		a.RegisterObserver(fileAudit)
+	}
+	if cfg.AuditURL != "" {
+		remoteAudit := NewAuditURL(cfg.AuditURL)
+		a.RegisterObserver(remoteAudit)
 	}
 }
 

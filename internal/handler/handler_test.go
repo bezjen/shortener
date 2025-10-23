@@ -36,7 +36,9 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 	deletedURL := model.NewURL("qwerty13", "https://practicum.yandex1.ru/")
 	deletedURL.IsDeleted = true
 	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty13").Return(deletedURL, nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+	mockAudit := new(mocks.AuditService)
+	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name                string
@@ -104,7 +106,9 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+	mockAudit := new(mocks.AuditService)
+	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name         string
@@ -154,7 +158,9 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+	mockAudit := new(mocks.AuditService)
+	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name         string
@@ -216,7 +222,9 @@ func TestHandlePostShortURLBatchJSON(t *testing.T) {
 		[]model.ShortenBatchResponseItem{
 			*model.NewShortenBatchResponseItem("123", "qwerty12"),
 		}, nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+	mockAudit := new(mocks.AuditService)
+	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name         string
@@ -337,7 +345,8 @@ func TestHandleGetUserURLsJSON(t *testing.T) {
 			mockShortener := new(mocks.Shortener)
 			tt.mockSetup(mockShortener)
 
-			h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+			mockAudit := new(mocks.AuditService)
+			h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 			req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
 			if tt.setupRequest != nil {
@@ -371,7 +380,9 @@ func TestHandlePingRepository(t *testing.T) {
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(mocks.Shortener)
 	mockShortener.On("PingRepository", mock.Anything).Return(nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+	mockAudit := new(mocks.AuditService)
+	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name         string

@@ -38,7 +38,9 @@ func main() {
 	urlShortener := service.NewURLShortener(storage, shortenerLogger)
 	defer urlShortener.Close()
 	authorizer := service.NewAuthorizer([]byte(cfg.SecretKey), shortenerLogger)
-	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener)
+	auditService := service.NewShortenerAuditService(shortenerLogger)
+	auditService.ConfigureObservers(cfg)
+	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener, auditService)
 	shortenerRouter := router.NewRouter(shortenerLogger, authorizer, *shortenerHandler)
 
 	ctx, cancel := context.WithCancel(context.Background())

@@ -14,19 +14,27 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type ShortenerHandler struct {
-	cfg       config.Config
-	logger    *logger.Logger
-	shortener service.Shortener
+	cfg          config.Config
+	logger       *logger.Logger
+	shortener    service.Shortener
+	auditService service.AuditService
 }
 
-func NewShortenerHandler(cfg config.Config, logger *logger.Logger, shortener service.Shortener) *ShortenerHandler {
+func NewShortenerHandler(
+	cfg config.Config,
+	logger *logger.Logger,
+	shortener service.Shortener,
+	auditService service.AuditService,
+) *ShortenerHandler {
 	return &ShortenerHandler{
-		cfg:       cfg,
-		logger:    logger,
-		shortener: shortener,
+		cfg:          cfg,
+		logger:       logger,
+		shortener:    shortener,
+		auditService: auditService,
 	}
 }
 
@@ -52,6 +60,7 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 		return
 	}
 
+	h.auditEvent(model.ActionShorten, userID, bodyString)
 	h.writeTextResponse(rw, http.StatusCreated, shortURL)
 }
 
@@ -77,6 +86,7 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 		return
 	}
 
+	h.auditEvent(model.ActionFollow, getUserIDFromContext(r), resultURL.OriginalURL)
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.Header().Set("Location", resultURL.OriginalURL)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
@@ -102,6 +112,7 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 		return
 	}
 
+	h.auditEvent(model.ActionShorten, userID, request.URL)
 	h.writeShortenJSONSuccessResponse(rw, http.StatusCreated, shortURL)
 }
 
@@ -344,4 +355,13 @@ func getUserIDFromContext(r *http.Request) string {
 		return ""
 	}
 	return userID
+}
+
+func (h *ShortenerHandler) auditEvent(action model.AuditAction, userID string, url string) {
+	if h.auditService == nil {
+		return
+	}
+
+	event := model.NewAuditEvent(time.Now().Unix(), action, userID, url)
+	h.auditService.NotifyAll(*event)
 }
