@@ -17,9 +17,13 @@ func NewRouter(logger *logger.Logger,
 	authMiddleware := middleware.NewAuthMiddleware(authorizer, logger)
 	loggingMiddleware := middleware.NewLoggingMiddleware(logger)
 
+	gzipMiddleware := middleware.NewGzipMiddleware(logger)
+
 	r.Use(
 		authMiddleware.WithAuth,
-		loggingMiddleware.WithLogging)
+		loggingMiddleware.WithLogging,
+		gzipMiddleware.WithGzipRequestDecompression,
+		gzipMiddleware.WithGzipResponseCompression)
 
 	r.Post("/", shortenerHandler.HandlePostShortURLTextPlain)
 	r.Get("/ping", shortenerHandler.HandlePingRepository)
