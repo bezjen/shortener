@@ -3,6 +3,7 @@ package handler_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -11,23 +12,85 @@ import (
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/handler"
 	"github.com/bezjen/shortener/internal/logger"
+	"github.com/bezjen/shortener/internal/middleware"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/service"
+	"github.com/stretchr/testify/mock"
 )
+
+// mockShortener is a mock implementation of service.Shortener for examples
+type mockShortener struct {
+	mock.Mock
+}
+
+func (m *mockShortener) GenerateShortURLPart(ctx context.Context, userID string, url string) (string, error) {
+	args := m.Called(ctx, userID, url)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockShortener) GenerateShortURLPartBatch(ctx context.Context, userID string, urls []model.ShortenBatchRequestItem) ([]model.ShortenBatchResponseItem, error) {
+	args := m.Called(ctx, userID, urls)
+	return args.Get(0).([]model.ShortenBatchResponseItem), args.Error(1)
+}
+
+func (m *mockShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart string) (*model.URL, error) {
+	args := m.Called(ctx, shortURLPart)
+	return args.Get(0).(*model.URL), args.Error(1)
+}
+
+func (m *mockShortener) GetURLsByUserID(ctx context.Context, userID string) ([]model.URL, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).([]model.URL), args.Error(1)
+}
+
+func (m *mockShortener) DeleteUserShortURLsBatch(ctx context.Context, userID string, shortURLs []string) error {
+	args := m.Called(ctx, userID, shortURLs)
+	return args.Error(0)
+}
+
+func (m *mockShortener) PingRepository(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+// mockAuditService is a mock implementation of service.AuditService for examples
+type mockAuditService struct {
+	mock.Mock
+}
+
+func (m *mockAuditService) NotifyAll(event model.AuditEvent) {
+	m.Called(event)
+}
+
+func (m *mockAuditService) RegisterObserver(observer service.AuditObserver) {
+	m.Called(observer)
+}
 
 // ExampleShortenerHandler_HandlePostShortURLTextPlain demonstrates creating a short URL from plain text.
 func ExampleShortenerHandler_HandlePostShortURLTextPlain() {
 	// Setup
 	cfg := config.Config{BaseURL: "http://localhost:8080"}
 	testLogger, _ := logger.NewLogger("debug")
-	shortener := &service.URLShortener{}             // mock implementation
-	auditService := &service.ShortenerAuditService{} // mock implementation
+
+	// Use mock implementations instead of real ones
+	shortener := &mockShortener{}
+	auditService := &mockAuditService{}
+
+	// Setup mock expectations
+	shortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://example.com/very-long-url-path").
+		Return("abc123", nil)
+	auditService.On("NotifyAll", mock.Anything).Return()
+
 	h := handler.NewShortenerHandler(cfg, testLogger, shortener, auditService)
 
 	// Create test request
 	body := strings.NewReader("https://example.com/very-long-url-path")
 	req := httptest.NewRequest("POST", "/", body)
 	req.Header.Set("Content-Type", "text/plain")
+
+	// Add user context
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user")
+	req = req.WithContext(ctx)
 
 	// Execute
 	w := httptest.NewRecorder()
@@ -50,8 +113,15 @@ func ExampleShortenerHandler_HandlePostShortURLJSON() {
 	// Setup
 	cfg := config.Config{BaseURL: "http://localhost:8080"}
 	testLogger, _ := logger.NewLogger("debug")
-	shortener := &service.URLShortener{}             // mock implementation
-	auditService := &service.ShortenerAuditService{} // mock implementation
+
+	shortener := &mockShortener{}
+	auditService := &mockAuditService{}
+
+	// Setup mock expectations
+	shortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://example.com/very-long-url").
+		Return("def456", nil)
+	auditService.On("NotifyAll", mock.Anything).Return()
+
 	h := handler.NewShortenerHandler(cfg, testLogger, shortener, auditService)
 
 	// Create JSON request
@@ -60,6 +130,10 @@ func ExampleShortenerHandler_HandlePostShortURLJSON() {
 
 	req := httptest.NewRequest("POST", "/api/shorten", bytes.NewReader(jsonData))
 	req.Header.Set("Content-Type", "application/json")
+
+	// Add user context
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user")
+	req = req.WithContext(ctx)
 
 	// Execute
 	w := httptest.NewRecorder()
@@ -82,19 +156,35 @@ func ExampleShortenerHandler_HandlePostShortURLBatchJSON() {
 	// Setup
 	cfg := config.Config{BaseURL: "http://localhost:8080"}
 	testLogger, _ := logger.NewLogger("debug")
-	shortener := &service.URLShortener{}             // mock implementation
-	auditService := &service.ShortenerAuditService{} // mock implementation
-	h := handler.NewShortenerHandler(cfg, testLogger, shortener, auditService)
 
-	// Create batch request
+	shortener := &mockShortener{}
+	auditService := &mockAuditService{}
+
+	// Setup mock expectations
 	batchRequest := []model.ShortenBatchRequestItem{
 		{CorrelationID: "1", OriginalURL: "https://example.com/first-url"},
 		{CorrelationID: "2", OriginalURL: "https://example.com/second-url"},
 	}
 
+	expectedResponse := []model.ShortenBatchResponseItem{
+		{CorrelationID: "1", ShortURL: "short1"},
+		{CorrelationID: "2", ShortURL: "short2"},
+	}
+
+	shortener.On("GenerateShortURLPartBatch", mock.Anything, mock.Anything, batchRequest).
+		Return(expectedResponse, nil)
+	auditService.On("NotifyAll", mock.Anything).Return()
+
+	h := handler.NewShortenerHandler(cfg, testLogger, shortener, auditService)
+
+	// Create batch request
 	jsonData, _ := json.Marshal(batchRequest)
 	req := httptest.NewRequest("POST", "/api/shorten/batch", bytes.NewReader(jsonData))
 	req.Header.Set("Content-Type", "application/json")
+
+	// Add user context
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user")
+	req = req.WithContext(ctx)
 
 	// Execute
 	w := httptest.NewRecorder()
@@ -117,13 +207,26 @@ func ExampleShortenerHandler_HandleGetUserURLsJSON() {
 	// Setup
 	cfg := config.Config{BaseURL: "http://localhost:8080"}
 	testLogger, _ := logger.NewLogger("debug")
-	shortener := &service.URLShortener{}             // mock implementation
-	auditService := &service.ShortenerAuditService{} // mock implementation
+
+	shortener := &mockShortener{}
+	auditService := &mockAuditService{}
+
+	// Setup mock expectations
+	userURLs := []model.URL{
+		{ShortURL: "url1", OriginalURL: "https://example.com/1"},
+		{ShortURL: "url2", OriginalURL: "https://example.com/2"},
+	}
+
+	shortener.On("GetURLsByUserID", mock.Anything, "test-user").Return(userURLs, nil)
+
 	h := handler.NewShortenerHandler(cfg, testLogger, shortener, auditService)
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/user/urls", nil)
-	// Note: In real usage, user ID would be set by authentication middleware
+
+	// Add user context
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user")
+	req = req.WithContext(ctx)
 
 	// Execute
 	w := httptest.NewRecorder()
@@ -146,16 +249,25 @@ func ExampleShortenerHandler_HandleDeleteShortURLsBatchJSON() {
 	// Setup
 	cfg := config.Config{BaseURL: "http://localhost:8080"}
 	testLogger, _ := logger.NewLogger("debug")
-	shortener := &service.URLShortener{}             // mock implementation
-	auditService := &service.ShortenerAuditService{} // mock implementation
+
+	shortener := &mockShortener{}
+	auditService := &mockAuditService{}
+
+	// Setup mock expectations
+	urlsToDelete := []string{"abc123", "def456"}
+	shortener.On("DeleteUserShortURLsBatch", mock.Anything, "test-user", urlsToDelete).Return(nil)
+
 	h := handler.NewShortenerHandler(cfg, testLogger, shortener, auditService)
 
 	// Create deletion request
-	urlsToDelete := []string{"abc123", "def456"}
 	jsonData, _ := json.Marshal(urlsToDelete)
 
 	req := httptest.NewRequest("DELETE", "/api/user/urls", bytes.NewReader(jsonData))
 	req.Header.Set("Content-Type", "application/json")
+
+	// Add user context
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user")
+	req = req.WithContext(ctx)
 
 	// Execute
 	w := httptest.NewRecorder()
@@ -176,8 +288,13 @@ func ExampleShortenerHandler_HandlePingRepository() {
 	// Setup
 	cfg := config.Config{BaseURL: "http://localhost:8080"}
 	testLogger, _ := logger.NewLogger("debug")
-	shortener := &service.URLShortener{}             // mock implementation
-	auditService := &service.ShortenerAuditService{} // mock implementation
+
+	shortener := &mockShortener{}
+	auditService := &mockAuditService{}
+
+	// Setup mock expectations
+	shortener.On("PingRepository", mock.Anything).Return(nil)
+
 	h := handler.NewShortenerHandler(cfg, testLogger, shortener, auditService)
 
 	// Create request
