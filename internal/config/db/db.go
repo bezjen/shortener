@@ -1,3 +1,6 @@
+// Package db provides database initialization and migration functionality.
+// It handles the setup of different storage backends (PostgreSQL, file, in-memory)
+// and runs database migrations for PostgreSQL.
 package db
 
 import (
@@ -9,6 +12,24 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
+// InitDB initializes the appropriate repository based on configuration.
+// It supports PostgreSQL, file-based, and in-memory storage backends.
+// For PostgreSQL, it runs database migrations before initializing the repository.
+//
+// Parameters:
+//   - cfg: application configuration containing storage settings
+//
+// Returns:
+//   - repository.Repository: initialized repository instance
+//   - error: error if initialization or migrations fail
+//
+// Example:
+//
+//	cfg := config.Config{DatabaseDSN: "postgres://user:pass@localhost/db"}
+//	repo, err := db.InitDB(cfg)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 func InitDB(cfg config.Config) (repository.Repository, error) {
 	if cfg.DatabaseDSN != "" {
 		if err := runMigrations(cfg.DatabaseDSN); err != nil {
@@ -31,6 +52,15 @@ func InitDB(cfg config.Config) (repository.Repository, error) {
 	}
 }
 
+// runMigrations executes database migrations for PostgreSQL.
+// It looks for migration files in the "migrations" directory and applies them.
+// If no new migrations are found (ErrNoChange), it returns nil.
+//
+// Parameters:
+//   - databaseDSN: PostgreSQL connection string
+//
+// Returns:
+//   - error: error if migrations fail (excluding no-change errors)
 func runMigrations(databaseDSN string) error {
 	m, err := migrate.New("file://migrations", databaseDSN)
 	if err != nil {

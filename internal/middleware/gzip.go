@@ -1,3 +1,4 @@
+// Package middleware provides HTTP middleware components for the URL shortening service.
 package middleware
 
 import (
@@ -8,14 +9,31 @@ import (
 	"strings"
 )
 
+// GzipMiddleware provides GZIP compression and decompression for HTTP requests.
+// It automatically compresses responses and decompresses requests when appropriate.
 type GzipMiddleware struct {
 	logger *logger.Logger
 }
 
+// NewGzipMiddleware creates a new GzipMiddleware instance.
+//
+// Parameters:
+//   - logger: logger instance for logging compression events
+//
+// Returns:
+//   - *GzipMiddleware: initialized GZIP middleware
 func NewGzipMiddleware(logger *logger.Logger) *GzipMiddleware {
 	return &GzipMiddleware{logger: logger}
 }
 
+// WithGzipRequestDecompression wraps an HTTP handler with GZIP request decompression.
+// Automatically decompresses request bodies with Content-Encoding: gzip header.
+//
+// Parameters:
+//   - h: HTTP handler to wrap
+//
+// Returns:
+//   - http.Handler: wrapped handler that decompresses GZIP requests
 func (m *GzipMiddleware) WithGzipRequestDecompression(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
@@ -40,6 +58,15 @@ func (m *GzipMiddleware) WithGzipRequestDecompression(h http.Handler) http.Handl
 	})
 }
 
+// WithGzipResponseCompression wraps an HTTP handler with GZIP response compression.
+// Automatically compresses responses for clients that Accept-Encoding: gzip.
+// Skips compression for DELETE requests and when client doesn't support GZIP.
+//
+// Parameters:
+//   - h: HTTP handler to wrap
+//
+// Returns:
+//   - http.Handler: wrapped handler that compresses responses
 func (m *GzipMiddleware) WithGzipResponseCompression(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
