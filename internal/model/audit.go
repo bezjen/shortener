@@ -2,9 +2,9 @@
 package model
 
 // AuditAction represents the type of action being audited.
-// Used to categorize audit events for logging and analysis.
 type AuditAction string
 
+// Audit constants.
 const (
 	// ActionShorten represents URL shortening actions.
 	// Recorded when a user creates a new short URL.

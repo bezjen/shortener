@@ -13,6 +13,7 @@ import (
 // userIDKey is the context key type for storing user ID in request context.
 type userIDKey string
 
+// Auth constants for middleware.
 const (
 	// CookieName is the name of the authentication cookie.
 	CookieName = "user_token"
