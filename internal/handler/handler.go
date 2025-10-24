@@ -1,3 +1,4 @@
+// Package handler provides HTTP handlers for the URL shortening service.
 package handler
 
 import (
@@ -17,6 +18,7 @@ import (
 	"time"
 )
 
+// ShortenerHandler handles HTTP requests for URL shortening operations.
 type ShortenerHandler struct {
 	cfg          config.Config
 	logger       *logger.Logger
@@ -24,6 +26,16 @@ type ShortenerHandler struct {
 	auditService service.AuditService
 }
 
+// NewShortenerHandler creates a new instance of ShortenerHandler.
+//
+// Parameters:
+//   - cfg: application configuration settings
+//   - logger: logger instance for application logging
+//   - shortener: URL shortening service implementation
+//   - auditService: service for auditing user actions
+//
+// Returns:
+//   - *ShortenerHandler: initialized HTTP handler
 func NewShortenerHandler(
 	cfg config.Config,
 	logger *logger.Logger,
@@ -38,6 +50,28 @@ func NewShortenerHandler(
 	}
 }
 
+// HandlePostShortURLTextPlain handles POST requests to create short URLs from plain text.
+// Accepts the original URL in the request body as text/plain.
+//
+// Responses:
+//   - 201 Created: Short URL successfully created
+//   - 409 Conflict: URL was already shortened previously
+//   - 400 Bad Request: Invalid URL format
+//   - 500 Internal Server Error: Internal server error
+//
+// Example request:
+//
+//	POST / HTTP/1.1
+//	Content-Type: text/plain
+//
+//	https://example.com/very-long-url
+//
+// Example response:
+//
+//	HTTP/1.1 201 Created
+//	Content-Type: text/plain
+//
+//	http://localhost:8080/abc123def
 func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r *http.Request) {
 	userID := getUserIDFromContext(r)
 	defer r.Body.Close()
@@ -64,6 +98,26 @@ func (h *ShortenerHandler) HandlePostShortURLTextPlain(rw http.ResponseWriter, r
 	h.writeTextResponse(rw, http.StatusCreated, shortURL)
 }
 
+// HandleGetShortURLRedirect handles GET requests to redirect to original URLs.
+// Looks up the original URL by short identifier and performs redirect.
+//
+// Path parameters:
+//   - shortURL: Short URL identifier in the URL path
+//
+// Responses:
+//   - 307 Temporary Redirect: Successful redirect to original URL
+//   - 410 Gone: Short URL has been deleted
+//   - 400 Bad Request: Missing or invalid short URL parameter
+//   - 500 Internal Server Error: Internal server error
+//
+// Example request:
+//
+//	GET /abc123def HTTP/1.1
+//
+// Example response:
+//
+//	HTTP/1.1 307 Temporary Redirect
+//	Location: https://example.com/very-long-url
 func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "shortURL")
 	if shortURL == "" {
@@ -92,6 +146,25 @@ func (h *ShortenerHandler) HandleGetShortURLRedirect(rw http.ResponseWriter, r *
 	rw.WriteHeader(http.StatusTemporaryRedirect)
 }
 
+// HandlePostShortURLJSON handles POST requests to create short URLs from JSON.
+// Accepts the original URL in a JSON object in the request body.
+//
+// Request format:
+//
+//	{"url": "https://example.com/very-long-url"}
+//
+// Responses:
+//   - 201 Created: Short URL successfully created
+//   - 409 Conflict: URL was already shortened previously
+//   - 400 Bad Request: Invalid JSON or URL format
+//   - 500 Internal Server Error: Internal server error
+//
+// Example response:
+//
+//	HTTP/1.1 201 Created
+//	Content-Type: application/json
+//
+//	{"result": "http://localhost:8080/abc123def"}
 func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *http.Request) {
 	userID := getUserIDFromContext(r)
 	rw.Header().Set("Content-Type", "application/json")
@@ -116,6 +189,30 @@ func (h *ShortenerHandler) HandlePostShortURLJSON(rw http.ResponseWriter, r *htt
 	h.writeShortenJSONSuccessResponse(rw, http.StatusCreated, shortURL)
 }
 
+// HandlePostShortURLBatchJSON handles POST requests for batch URL shortening.
+// Accepts multiple URLs with correlation IDs and returns shortened versions.
+//
+// Request format:
+//
+//	[
+//	  {"correlation_id": "1", "original_url": "https://example.com/url1"},
+//	  {"correlation_id": "2", "original_url": "https://example.com/url2"}
+//	]
+//
+// Responses:
+//   - 201 Created: Batch processing completed successfully
+//   - 400 Bad Request: Invalid JSON or URL format
+//   - 500 Internal Server Error: Internal server error
+//
+// Example response:
+//
+//	HTTP/1.1 201 Created
+//	Content-Type: application/json
+//
+//	[
+//	  {"correlation_id": "1", "short_url": "http://localhost:8080/abc123"},
+//	  {"correlation_id": "2", "short_url": "http://localhost:8080/def456"}
+//	]
 func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r *http.Request) {
 	userID := getUserIDFromContext(r)
 	rw.Header().Set("Content-Type", "application/json")
@@ -146,6 +243,24 @@ func (h *ShortenerHandler) HandlePostShortURLBatchJSON(rw http.ResponseWriter, r
 	h.writeJSONResponse(rw, http.StatusCreated, response)
 }
 
+// HandleGetUserURLsJSON handles GET requests to retrieve user's URLs.
+// Returns all URLs created by the authenticated user.
+//
+// Responses:
+//   - 200 OK: User URLs retrieved successfully
+//   - 204 No Content: User has no shortened URLs
+//   - 401 Unauthorized: User not authenticated
+//   - 500 Internal Server Error: Internal server error
+//
+// Example response:
+//
+//	HTTP/1.1 200 OK
+//	Content-Type: application/json
+//
+//	[
+//	  {"short_url": "http://localhost:8080/abc123", "original_url": "https://example.com/url1"},
+//	  {"short_url": "http://localhost:8080/def456", "original_url": "https://example.com/url2"}
+//	]
 func (h *ShortenerHandler) HandleGetUserURLsJSON(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	userID := getUserIDFromContext(r)
@@ -172,6 +287,24 @@ func (h *ShortenerHandler) HandleGetUserURLsJSON(rw http.ResponseWriter, r *http
 	h.writeJSONResponse(rw, http.StatusOK, response)
 }
 
+// HandleDeleteShortURLsBatchJSON handles DELETE requests to mark URLs as deleted.
+// Accepts a list of short URLs to mark as deleted (async processing).
+//
+// Request format:
+//
+//	["abc123def", "xyz456ghi"]
+//
+// Responses:
+//   - 202 Accepted: Deletion request accepted for processing
+//   - 400 Bad Request: Invalid JSON format
+//   - 429 Too Many Requests: Deletion queue is full
+//
+// Example request:
+//
+//	DELETE /api/user/urls HTTP/1.1
+//	Content-Type: application/json
+//
+//	["abc123def", "xyz456ghi"]
 func (h *ShortenerHandler) HandleDeleteShortURLsBatchJSON(rw http.ResponseWriter, r *http.Request) {
 	userID := getUserIDFromContext(r)
 	rw.Header().Set("Content-Type", "application/json")
@@ -197,6 +330,11 @@ func (h *ShortenerHandler) HandleDeleteShortURLsBatchJSON(rw http.ResponseWriter
 	rw.WriteHeader(http.StatusAccepted)
 }
 
+// HandlePingRepository handles health check requests to verify storage connectivity.
+//
+// Responses:
+//   - 200 OK: Storage is accessible
+//   - 500 Internal Server Error: Storage is unreachable
 func (h *ShortenerHandler) HandlePingRepository(rw http.ResponseWriter, r *http.Request) {
 	err := h.shortener.PingRepository(r.Context())
 	if err != nil {
