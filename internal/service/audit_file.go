@@ -43,15 +43,14 @@ func (a *AuditFile) Notify(event model.AuditEvent) error {
 	}
 	data = append(data, '\n')
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
 	file, err := os.OpenFile(a.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	_, err = file.Write(data)
 	return err
 }
