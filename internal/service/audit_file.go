@@ -11,7 +11,7 @@ import (
 // AuditFile implements AuditObserver for writing audit events to a local file.
 type AuditFile struct {
 	filePath string
-	mu       sync.Mutex
+	mu       *sync.Mutex
 }
 
 // NewAuditFile creates a new AuditFile observer for file-based audit logging.
@@ -24,6 +24,7 @@ type AuditFile struct {
 func NewAuditFile(filePath string) *AuditFile {
 	return &AuditFile{
 		filePath: filePath,
+		mu:       &sync.Mutex{},
 	}
 }
 
@@ -36,6 +37,12 @@ func NewAuditFile(filePath string) *AuditFile {
 // Returns:
 //   - error: Error if file operations fail or JSON serialization fails
 func (a *AuditFile) Notify(event model.AuditEvent) error {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -45,11 +52,6 @@ func (a *AuditFile) Notify(event model.AuditEvent) error {
 	}
 	defer file.Close()
 
-	data, err := json.Marshal(event)
-	if err != nil {
-		return err
-	}
-
-	_, err = file.Write(append(data, '\n'))
+	_, err = file.Write(data)
 	return err
 }

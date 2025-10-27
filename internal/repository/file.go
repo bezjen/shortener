@@ -21,7 +21,7 @@ type FileRepository struct {
 	encoder       json.Encoder
 	decoder       json.Decoder
 	memoryStorage map[string]model.ShortURLFileDto
-	mu            sync.RWMutex
+	mu            *sync.RWMutex
 }
 
 // NewFileRepository creates a new FileRepository instance.
@@ -48,6 +48,7 @@ func NewFileRepository(cfg config.Config) (*FileRepository, error) {
 		memoryStorage: memoryStorage,
 		encoder:       *json.NewEncoder(fileStorage),
 		decoder:       decoder,
+		mu:            &sync.RWMutex{},
 	}, nil
 }
 

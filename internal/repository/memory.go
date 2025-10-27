@@ -13,7 +13,7 @@ import (
 // Suitable for testing and development environments.
 type InMemoryRepository struct {
 	storage map[string]string
-	mu      sync.RWMutex
+	mu      *sync.RWMutex
 }
 
 // NewInMemoryRepository creates a new InMemoryRepository instance.
@@ -24,6 +24,7 @@ type InMemoryRepository struct {
 func NewInMemoryRepository() *InMemoryRepository {
 	return &InMemoryRepository{
 		storage: make(map[string]string),
+		mu:      &sync.RWMutex{},
 	}
 }
 
