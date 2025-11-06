@@ -36,7 +36,9 @@ func TestHandleGetShortURLRedirect(t *testing.T) {
 	deletedURL := model.NewURL("qwerty13", "https://practicum.yandex1.ru/")
 	deletedURL.IsDeleted = true
 	mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty13").Return(deletedURL, nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+	mockAudit := new(mocks.AuditService)
+	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name                string
@@ -104,7 +106,9 @@ func TestHandlePostShortURLTextPlain(t *testing.T) {
 	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+	mockAudit := new(mocks.AuditService)
+	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name         string
@@ -154,7 +158,9 @@ func TestHandlePostShortURLJSON(t *testing.T) {
 	mockShortener := new(mocks.Shortener)
 	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
 		Return("qwerty12", nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+	mockAudit := new(mocks.AuditService)
+	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name         string
@@ -216,7 +222,9 @@ func TestHandlePostShortURLBatchJSON(t *testing.T) {
 		[]model.ShortenBatchResponseItem{
 			*model.NewShortenBatchResponseItem("123", "qwerty12"),
 		}, nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+	mockAudit := new(mocks.AuditService)
+	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name         string
@@ -337,7 +345,8 @@ func TestHandleGetUserURLsJSON(t *testing.T) {
 			mockShortener := new(mocks.Shortener)
 			tt.mockSetup(mockShortener)
 
-			h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+			mockAudit := new(mocks.AuditService)
+			h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 			req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
 			if tt.setupRequest != nil {
@@ -371,7 +380,9 @@ func TestHandlePingRepository(t *testing.T) {
 	testLogger, _ := logger.NewLogger("debug")
 	mockShortener := new(mocks.Shortener)
 	mockShortener.On("PingRepository", mock.Anything).Return(nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener)
+	mockAudit := new(mocks.AuditService)
+	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name         string
@@ -392,5 +403,164 @@ func TestHandlePingRepository(t *testing.T) {
 			defer res.Body.Close()
 			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
 		})
+	}
+}
+
+// BenchmarkHandlePostShortURLTextPlain измеряет производительность текстового POST
+func BenchmarkHandlePostShortURLTextPlain(b *testing.B) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("info") // Используем info для уменьшения логов
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer() // Останавливаем таймер для настройки моков
+
+		mockShortener := new(mocks.Shortener)
+		mockAudit := new(mocks.AuditService)
+
+		mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
+			Return("qwerty12", nil)
+		mockAudit.On("NotifyAll", mock.Anything).Return()
+
+		h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
+		req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("https://practicum.yandex.ru/"))
+		ctx := context.WithValue(req.Context(), middleware.UserIDKey, "bench-user")
+		req = req.WithContext(ctx)
+		rr := httptest.NewRecorder()
+
+		b.StartTimer() // Запускаем таймер для измерения
+		h.HandlePostShortURLTextPlain(rr, req)
+		b.StopTimer()
+	}
+}
+
+// BenchmarkHandleGetShortURLRedirect измеряет производительность редиректа
+func BenchmarkHandleGetShortURLRedirect(b *testing.B) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("info")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+
+		mockShortener := new(mocks.Shortener)
+		mockAudit := new(mocks.AuditService)
+
+		url := model.NewURL("qwerty12", "https://practicum.yandex.ru/")
+		mockShortener.On("GetURLByShortURLPart", mock.Anything, "qwerty12").Return(url, nil)
+		mockAudit.On("NotifyAll", mock.Anything).Return()
+
+		h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
+		req := httptest.NewRequest(http.MethodGet, "/qwerty12", nil)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("shortURL", "qwerty12")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		rr := httptest.NewRecorder()
+
+		b.StartTimer()
+		h.HandleGetShortURLRedirect(rr, req)
+		b.StopTimer()
+	}
+}
+
+// BenchmarkHandlePostShortURLJSON измеряет производительность JSON POST
+func BenchmarkHandlePostShortURLJSON(b *testing.B) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("info")
+
+	jsonBody := `{"url":"https://practicum.yandex.ru/"}`
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+
+		mockShortener := new(mocks.Shortener)
+		mockAudit := new(mocks.AuditService)
+
+		mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://practicum.yandex.ru/").
+			Return("qwerty12", nil)
+		mockAudit.On("NotifyAll", mock.Anything).Return()
+
+		h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBufferString(jsonBody))
+		req.Header.Set("Content-Type", "application/json")
+		ctx := context.WithValue(req.Context(), middleware.UserIDKey, "bench-user")
+		req = req.WithContext(ctx)
+		rr := httptest.NewRecorder()
+
+		b.StartTimer()
+		h.HandlePostShortURLJSON(rr, req)
+		b.StopTimer()
+	}
+}
+
+// BenchmarkHandlePostShortURLBatchJSON измеряет производительность batch JSON POST
+func BenchmarkHandlePostShortURLBatchJSON(b *testing.B) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("info")
+
+	jsonBody := `[{"correlation_id":"123","original_url":"https://practicum.yandex.ru/"}]`
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+
+		mockShortener := new(mocks.Shortener)
+		mockAudit := new(mocks.AuditService)
+
+		mockShortener.On("GenerateShortURLPartBatch", mock.Anything, mock.Anything,
+			[]model.ShortenBatchRequestItem{*model.NewShortenBatchRequestItem(
+				"123", "https://practicum.yandex.ru/"),
+			}).Return(
+			[]model.ShortenBatchResponseItem{
+				*model.NewShortenBatchResponseItem("123", "qwerty12"),
+			}, nil)
+		mockAudit.On("NotifyAll", mock.Anything).Return()
+
+		h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", bytes.NewBufferString(jsonBody))
+		req.Header.Set("Content-Type", "application/json")
+		ctx := context.WithValue(req.Context(), middleware.UserIDKey, "bench-user")
+		req = req.WithContext(ctx)
+		rr := httptest.NewRecorder()
+
+		b.StartTimer()
+		h.HandlePostShortURLBatchJSON(rr, req)
+		b.StopTimer()
+	}
+}
+
+// BenchmarkHandleGetUserURLsJSON измеряет производительность получения пользовательских URL
+func BenchmarkHandleGetUserURLsJSON(b *testing.B) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("info")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+
+		mockShortener := new(mocks.Shortener)
+		mockAudit := new(mocks.AuditService)
+
+		mockShortener.On("GetURLsByUserID", mock.Anything, "user123").Return(
+			[]model.URL{
+				*model.NewURL("qwerty12", "https://example.com/page1"),
+				*model.NewURL("qwerty34", "https://example.com/page2"),
+			}, nil)
+
+		h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
+		req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
+		ctx := context.WithValue(req.Context(), middleware.UserIDKey, "user123")
+		req = req.WithContext(ctx)
+		rr := httptest.NewRecorder()
+
+		b.StartTimer()
+		h.HandleGetUserURLsJSON(rr, req)
+		b.StopTimer()
 	}
 }

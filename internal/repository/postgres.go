@@ -1,3 +1,4 @@
+// Package repository provides data storage implementations for the URL shortening service.
 package repository
 
 import (
@@ -11,10 +12,21 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// PostgresRepository implements Repository interface for PostgreSQL storage.
+// It provides persistent storage with transaction support and concurrent access.
 type PostgresRepository struct {
 	db *sql.DB
 }
 
+// NewPostgresRepository creates a new PostgresRepository instance.
+// Initializes database connection using the provided connection string.
+//
+// Parameters:
+//   - databaseDSN: PostgreSQL connection string
+//
+// Returns:
+//   - *PostgresRepository: initialized PostgreSQL repository
+//   - error: error if database connection fails
 func NewPostgresRepository(databaseDSN string) (*PostgresRepository, error) {
 	db, err := sql.Open("pgx", databaseDSN)
 	if err != nil {
@@ -25,6 +37,16 @@ func NewPostgresRepository(databaseDSN string) (*PostgresRepository, error) {
 	}, nil
 }
 
+// Save stores a URL mapping in PostgreSQL database.
+// Handles unique constraint violations and returns appropriate errors.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//   - userID: identifier of the user creating the URL
+//   - url: URL object containing short and original URLs
+//
+// Returns:
+//   - error: error if database operation fails or URL conflict occurs
 func (p *PostgresRepository) Save(ctx context.Context, userID string, url model.URL) error {
 	_, err := p.db.ExecContext(ctx,
 		"insert into t_short_url(short_url, original_url, user_id, is_deleted) values ($1, $2, $3, false)",
@@ -53,6 +75,16 @@ func (p *PostgresRepository) Save(ctx context.Context, userID string, url model.
 	return nil
 }
 
+// SaveBatch stores multiple URL mappings in a single transaction.
+// Provides atomic batch operations - all URLs are saved or none.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//   - userID: identifier of the user creating the URLs
+//   - urls: slice of URL objects to store
+//
+// Returns:
+//   - error: error if any database operation fails
 func (p *PostgresRepository) SaveBatch(ctx context.Context, userID string, urls []model.URL) error {
 	if len(urls) == 0 {
 		return nil
@@ -101,6 +133,16 @@ func (p *PostgresRepository) SaveBatch(ctx context.Context, userID string, urls 
 	return tx.Commit()
 }
 
+// DeleteBatch marks multiple short URLs as deleted in a single transaction.
+// Uses PostgreSQL array parameter for efficient batch updates.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//   - userID: identifier of the user owning the URLs (currently not used for authorization)
+//   - shortURLs: slice of short URL identifiers to mark as deleted
+//
+// Returns:
+//   - error: error if database operation fails
 func (p *PostgresRepository) DeleteBatch(ctx context.Context, _ string, shortURLs []string) error {
 	if len(shortURLs) == 0 {
 		return nil
@@ -127,6 +169,16 @@ func (p *PostgresRepository) DeleteBatch(ctx context.Context, _ string, shortURL
 	return tx.Commit()
 }
 
+// GetByShortURL retrieves the original URL by its short identifier.
+// Returns the URL with deletion status.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//   - shortURL: short URL identifier to look up
+//
+// Returns:
+//   - *model.URL: found URL object with deletion status
+//   - error: error if URL is not found or database operation fails
 func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string) (*model.URL, error) {
 	row := p.db.QueryRowContext(ctx, "select original_url, is_deleted from t_short_url where short_url = $1", shortURL)
 	var originalURL string
@@ -140,6 +192,16 @@ func (p *PostgresRepository) GetByShortURL(ctx context.Context, shortURL string)
 	return url, nil
 }
 
+// GetByUserID retrieves all URLs created by a specific user.
+// Only returns non-deleted URLs for the user.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//   - userID: user identifier to look up URLs for
+//
+// Returns:
+//   - []model.URL: slice of URLs created by the user
+//   - error: error if database operation fails
 func (p *PostgresRepository) GetByUserID(ctx context.Context, userID string) ([]model.URL, error) {
 	rows, err := p.db.QueryContext(ctx,
 		"select short_url, original_url from t_short_url where user_id = $1 and is_deleted = false",
@@ -163,14 +225,37 @@ func (p *PostgresRepository) GetByUserID(ctx context.Context, userID string) ([]
 	return urls, nil
 }
 
+// Ping checks the connectivity to PostgreSQL database.
+// Used for health checks and connection validation.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//
+// Returns:
+//   - error: error if database is unreachable
 func (p *PostgresRepository) Ping(ctx context.Context) error {
 	return p.db.PingContext(ctx)
 }
 
+// Close closes the database connection and releases resources.
+// Should be called when the repository is no longer needed.
+//
+// Returns:
+//   - error: error if database closing fails
 func (p *PostgresRepository) Close() error {
 	return p.db.Close()
 }
 
+// getShortURLByOriginalURL retrieves the short URL for a given original URL.
+// Internal helper method for conflict resolution.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//   - originalURL: original URL to look up
+//
+// Returns:
+//   - string: found short URL
+//   - error: error if URL is not found or database operation fails
 func (p *PostgresRepository) getShortURLByOriginalURL(ctx context.Context, originalURL string) (string, error) {
 	row := p.db.QueryRowContext(ctx, "select short_url from t_short_url where original_url = $1", originalURL)
 	var shortURL string
@@ -181,6 +266,14 @@ func (p *PostgresRepository) getShortURLByOriginalURL(ctx context.Context, origi
 	return shortURL, nil
 }
 
+// isUniqueViolation checks if an error is a PostgreSQL unique constraint violation.
+// Helper function for handling duplicate key errors.
+//
+// Parameters:
+//   - err: error to check
+//
+// Returns:
+//   - bool: true if error is a unique constraint violation
 func isUniqueViolation(err error) bool {
 	if err == nil {
 		return false
@@ -192,11 +285,18 @@ func isUniqueViolation(err error) bool {
 	return false
 }
 
+// ErrURLConflict represents a URL conflict error when original URL already exists.
+// Contains the existing short URL for the original URL.
 type ErrURLConflict struct {
 	ShortURL string
 	Err      string
 }
 
+// Error returns the string representation of the URL conflict error.
+// Implements the error interface.
+//
+// Returns:
+//   - string: error message
 func (err *ErrURLConflict) Error() string {
 	return err.Err
 }

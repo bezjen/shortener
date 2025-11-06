@@ -1,11 +1,13 @@
-package service
+package service_test
 
 import (
 	"context"
 	"errors"
+	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/mocks"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/bezjen/shortener/internal/repository"
+	"github.com/bezjen/shortener/internal/service"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -13,6 +15,7 @@ import (
 )
 
 func TestGenerateShortURLPart(t *testing.T) {
+	testLogger, _ := logger.NewLogger("debug")
 	mockPositiveRepo := new(mocks.Repository)
 	mockPositiveRepo.On("Save", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil)
@@ -36,14 +39,12 @@ func TestGenerateShortURLPart(t *testing.T) {
 			name:    "Too many collisions case",
 			storage: mockCollisionRepo,
 			url:     "https://practicum.yandex.ru/",
-			wantErr: ErrGenerate,
+			wantErr: service.ErrGenerate,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &URLShortener{
-				storage: tt.storage,
-			}
+			u := service.NewURLShortener(tt.storage, testLogger)
 			userID, err := uuid.NewUUID()
 			if err != nil {
 				t.Fatalf("Failed to generate uuid: %v", err)
@@ -61,6 +62,7 @@ func TestGenerateShortURLPart(t *testing.T) {
 }
 
 func TestGenerateShortURLPartBatch(t *testing.T) {
+	testLogger, _ := logger.NewLogger("debug")
 	mockPositiveRepo := new(mocks.Repository)
 	mockPositiveRepo.On("SaveBatch", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil)
@@ -88,14 +90,12 @@ func TestGenerateShortURLPartBatch(t *testing.T) {
 			urls: []model.ShortenBatchRequestItem{
 				*model.NewShortenBatchRequestItem("123", "https://practicum.yandex.ru/"),
 			},
-			wantErr: ErrGenerate,
+			wantErr: service.ErrGenerate,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &URLShortener{
-				storage: tt.storage,
-			}
+			u := service.NewURLShortener(tt.storage, testLogger)
 			userID, err := uuid.NewUUID()
 			if err != nil {
 				t.Fatalf("Failed to generate uuid: %v", err)
@@ -113,6 +113,7 @@ func TestGenerateShortURLPartBatch(t *testing.T) {
 }
 
 func TestGetURLByShortURLPart(t *testing.T) {
+	testLogger, _ := logger.NewLogger("debug")
 	mockRepoPositive := new(mocks.Repository)
 	mockRepoPositive.On("GetByShortURL", mock.Anything, "qwerty12").
 		Return(model.NewURL("qwerty12", "https://practicum.yandex.ru/"), nil)
@@ -144,9 +145,7 @@ func TestGetURLByShortURLPart(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &URLShortener{
-				storage: tt.storage,
-			}
+			u := service.NewURLShortener(tt.storage, testLogger)
 			got, err := u.GetURLByShortURLPart(context.TODO(), tt.shortURLPart)
 			if err != nil {
 				if !errors.Is(err, tt.wantErr) {
