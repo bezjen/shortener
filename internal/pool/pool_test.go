@@ -262,16 +262,3 @@ func BenchmarkPool(b *testing.B) {
 		}
 	})
 }
-
-// BenchmarkWithoutPool для сравнения производительности
-func BenchmarkWithoutPool(b *testing.B) {
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			obj := &testStruct{}
-			// Симуляция работы с объектом
-			obj.value = 42
-			obj.text = "benchmark"
-			// Здесь нет Put, объект будет собран GC
-		}
-	})
-}
