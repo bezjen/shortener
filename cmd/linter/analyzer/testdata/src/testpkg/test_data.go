@@ -1,3 +1,4 @@
+// Package testpkg contains test data for analyzer.
 package testpkg
 
 import (
@@ -5,6 +6,7 @@ import (
 	"os"
 )
 
+// BadFunction is not correct for custom linter
 func BadFunction() {
 	panic("should be reported") // want "panic is not allowed"
 
@@ -15,7 +17,8 @@ func BadFunction() {
 	os.Exit(1) // want "os.Exit is not allowed outside main function of main package"
 }
 
-func AnotherFunction() {
+// CorrectFunction is correct for custom linter
+func CorrectFunction() {
 	log.Println("this is ok")
 	println("this is also ok")
 }

@@ -1,3 +1,4 @@
+// Package analyzer provides custom linter.
 package analyzer
 
 import (
@@ -7,6 +8,7 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
+// Analyzer is the global application analyzer instance.
 var Analyzer = &analysis.Analyzer{
 	Name:     "custom_linter",
 	Doc:      "reports panic, log.Fatal and os.Exit outside main",
@@ -80,9 +82,5 @@ func isOSExitCall(call *ast.CallExpr) bool {
 }
 
 func isInMainPackageAndFunction(pass *analysis.Pass) bool {
-	if pass.Pkg.Name() != "main" {
-		return false
-	}
-
-	return true
+	return pass.Pkg.Name() == "main"
 }
