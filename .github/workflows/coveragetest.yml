@@ -9,50 +9,30 @@ on:
 jobs:
   coveragetest:
     runs-on: ubuntu-latest
-    container: golang:1.24
+    container: golang:1.21
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
+        with:
+          go-version: '1.21'
+
       - name: generate test coverage
         run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./internal/...
+
       - name: Go test coverage check
+        id: coverage
         uses: vladopajic/go-test-coverage@v2
         continue-on-error: true
         with:
           config: ./.testcoverage.yml
 
-      # Post coverage report as comment
-      - name: Get PR number
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        id: get-pr
-        with:
-          script: |
-            // Для pull_request события используем существующий номер PR
-            if (context.eventName === 'pull_request') {
-              return context.payload.pull_request.number;
-            }
-            // Для push события ищем PR по ветке
-            else if (context.eventName === 'push') {
-              const branch = context.ref.replace('refs/heads/', '');
-              const pulls = await github.rest.pulls.list({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                head: `${context.repo.owner}:${branch}`,
-                state: 'open'
-              });
-              return pulls.data[0]?.number || null;
-            }
-            return null;
-          result-encoding: string
-
+      # Post coverage report as comment - только для PR в том же репозитории
       - name: post coverage report
-        if: steps.get-pr.outputs.result != 'null' && steps.get-pr.outputs.result != ''
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: thollander/actions-comment-pull-request@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-tag: coverage-report
-          pr-number: ${{ steps.get-pr.outputs.result }}
           message: |
             ## 📊 Test Coverage Report
             
