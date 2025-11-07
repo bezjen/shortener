@@ -145,3 +145,34 @@ func TestInMemoryRepositoryErrNotFound(t *testing.T) {
 		}
 	})
 }
+
+func TestInMemoryRepositoryGetByUserID(t *testing.T) {
+	repo := NewInMemoryRepository()
+
+	urls, err := repo.GetByUserID(context.TODO(), "user1")
+	assert.Error(t, err)
+	assert.Nil(t, urls)
+	assert.Equal(t, "method not implemented", err.Error())
+}
+
+func TestInMemoryRepositoryDeleteBatch(t *testing.T) {
+	repo := NewInMemoryRepository()
+
+	err := repo.DeleteBatch(context.TODO(), "user1", []string{"qwerty12"})
+	assert.Error(t, err)
+	assert.Equal(t, "method not implemented", err.Error())
+}
+
+func TestInMemoryRepositoryPing(t *testing.T) {
+	repo := NewInMemoryRepository()
+
+	err := repo.Ping(context.TODO())
+	assert.NoError(t, err)
+}
+
+func TestInMemoryRepositoryClose(t *testing.T) {
+	repo := NewInMemoryRepository()
+
+	err := repo.Close()
+	assert.NoError(t, err)
+}
