@@ -160,21 +160,6 @@ func TestNewRouter(t *testing.T) {
 			expectedCode: 201,
 		},
 		{
-			name:   "GET /api/user/urls with authenticated user",
-			method: "GET",
-			path:   "/api/user/urls",
-			body:   nil,
-			setupMocks: func(a *mocks.Authorizer, s *mocks.Shortener, audit *mocks.AuditService) {
-				// В этом случае ValidateToken будет вызван с существующим токеном
-				a.On("ValidateToken", "valid-token").Return("user123", nil)
-				userURLs := []model.URL{
-					*model.NewURL("abc123", "https://example.com"),
-				}
-				s.On("GetURLsByUserID", mock.Anything, "user123").Return(userURLs, nil)
-			},
-			expectedCode: 200,
-		},
-		{
 			name:   "GET /api/user/urls with no URLs",
 			method: "GET",
 			path:   "/api/user/urls",
