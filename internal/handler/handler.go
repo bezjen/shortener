@@ -390,17 +390,7 @@ func (h *ShortenerHandler) handleGenerationError(rw http.ResponseWriter, err err
 func (h *ShortenerHandler) handleJSONGenerationError(rw http.ResponseWriter, err error, originalURL string) {
 	var uniqueURLErr *repository.ErrURLConflict
 	if errors.As(err, &uniqueURLErr) {
-		fullShortURL, err := h.buildFullURL(uniqueURLErr.ShortURL)
-		if err != nil {
-			h.logger.Error("Failed to generate full short URL",
-				zap.Error(err),
-				zap.String("baseURL", h.cfg.BaseURL),
-				zap.String("shortURL", uniqueURLErr.ShortURL),
-			)
-			h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
-			return
-		}
-		h.writeShortenJSONSuccessResponse(rw, http.StatusConflict, fullShortURL)
+		h.writeShortenJSONSuccessResponse(rw, http.StatusConflict, uniqueURLErr.ShortURL)
 		return
 	}
 

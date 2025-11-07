@@ -3,11 +3,13 @@ package handler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/logger"
 	"github.com/bezjen/shortener/internal/middleware"
 	"github.com/bezjen/shortener/internal/mocks"
 	"github.com/bezjen/shortener/internal/model"
+	"github.com/bezjen/shortener/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -563,4 +565,198 @@ func BenchmarkHandleGetUserURLsJSON(b *testing.B) {
 		h.HandleGetUserURLsJSON(rr, req)
 		b.StopTimer()
 	}
+}
+
+func TestHandlePostShortURLTextPlain_URLConflict(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	mockShortener := new(mocks.Shortener)
+
+	// Мокируем конфликт URL
+	conflictErr := &repository.ErrURLConflict{
+		ShortURL: "existing123",
+	}
+	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://conflict.example.com").
+		Return("", conflictErr)
+
+	mockAudit := new(mocks.AuditService)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("https://conflict.example.com"))
+	rr := httptest.NewRecorder()
+
+	h.HandlePostShortURLTextPlain(rr, req)
+
+	res := rr.Result()
+	defer res.Body.Close()
+	resBody, _ := io.ReadAll(res.Body)
+
+	assert.Equal(t, http.StatusConflict, res.StatusCode)
+	assert.Equal(t, "http://localhost:8080/existing123", string(resBody))
+	assert.Equal(t, "text/plain", res.Header.Get("Content-Type"))
+}
+
+func TestHandlePostShortURLTextPlain_GenerationError(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	mockShortener := new(mocks.Shortener)
+
+	// Мокируем общую ошибку генерации
+	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://error.example.com").
+		Return("", errors.New("database error"))
+
+	mockAudit := new(mocks.AuditService)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("https://error.example.com"))
+	rr := httptest.NewRecorder()
+
+	h.HandlePostShortURLTextPlain(rr, req)
+
+	res := rr.Result()
+	defer res.Body.Close()
+	resBody, _ := io.ReadAll(res.Body)
+
+	assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
+	assert.Equal(t, "Internal Server Error\n", string(resBody))
+}
+
+func TestHandlePostShortURLJSON_URLConflict(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	mockShortener := new(mocks.Shortener)
+
+	conflictErr := &repository.ErrURLConflict{
+		ShortURL: "existing456",
+	}
+	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://conflict.example.com").
+		Return("", conflictErr)
+
+	mockAudit := new(mocks.AuditService)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/shorten",
+		bytes.NewBufferString(`{"url":"https://conflict.example.com"}`),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	h.HandlePostShortURLJSON(rr, req)
+
+	res := rr.Result()
+	defer res.Body.Close()
+	resBody, _ := io.ReadAll(res.Body)
+
+	assert.Equal(t, http.StatusConflict, res.StatusCode)
+	assert.Equal(t, `{"result":"http://localhost:8080/existing456"}`+"\n", string(resBody))
+	assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
+}
+
+func TestHandlePostShortURLJSON_GenerationError(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	mockShortener := new(mocks.Shortener)
+
+	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://error.example.com").
+		Return("", errors.New("storage unavailable"))
+
+	mockAudit := new(mocks.AuditService)
+	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/shorten",
+		bytes.NewBufferString(`{"url":"https://error.example.com"}`),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	h.HandlePostShortURLJSON(rr, req)
+
+	res := rr.Result()
+	defer res.Body.Close()
+	resBody, _ := io.ReadAll(res.Body)
+
+	assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
+	assert.Equal(t, `{"error":"Internal Server Error"}`+"\n", string(resBody))
+	assert.Equal(t, "application/json", res.Header.Get("Content-Type"))
+}
+
+func TestHandlePostShortURLTextPlain_URLConflict_BuildFullURLError(t *testing.T) {
+	// Создаем конфиг с невалидным BaseURL для тестирования ошибки построения полного URL
+	invalidCfg := config.Config{
+		ServerAddr:      "localhost:8080",
+		BaseURL:         "://invalid-url", // Невалидный URL
+		LogLevel:        "info",
+		FileStoragePath: "./storage.json",
+	}
+
+	testLogger, _ := logger.NewLogger("debug")
+	mockShortener := new(mocks.Shortener)
+
+	// Мокируем конфликт URL
+	conflictErr := &repository.ErrURLConflict{
+		ShortURL: "existing123",
+	}
+	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://conflict.example.com").
+		Return("", conflictErr)
+
+	mockAudit := new(mocks.AuditService)
+	h := NewShortenerHandler(invalidCfg, testLogger, mockShortener, mockAudit)
+
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("https://conflict.example.com"))
+	rr := httptest.NewRecorder()
+
+	h.HandlePostShortURLTextPlain(rr, req)
+
+	res := rr.Result()
+	defer res.Body.Close()
+	resBody, _ := io.ReadAll(res.Body)
+
+	// Должны получить 500 из-за ошибки построения полного URL
+	assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
+	assert.Equal(t, "Internal Server Error\n", string(resBody))
+}
+
+func TestHandlePostShortURLJSON_URLConflict_BuildFullURLError(t *testing.T) {
+	// Создаем конфиг с невалидным BaseURL
+	invalidCfg := config.Config{
+		ServerAddr:      "localhost:8080",
+		BaseURL:         "://invalid-url", // Невалидный URL
+		LogLevel:        "info",
+		FileStoragePath: "./storage.json",
+	}
+
+	testLogger, _ := logger.NewLogger("debug")
+	mockShortener := new(mocks.Shortener)
+
+	// Мокируем конфликт URL
+	conflictErr := &repository.ErrURLConflict{
+		ShortURL: "existing456",
+	}
+	mockShortener.On("GenerateShortURLPart", mock.Anything, mock.Anything, "https://conflict.example.com").
+		Return("", conflictErr)
+
+	mockAudit := new(mocks.AuditService)
+	h := NewShortenerHandler(invalidCfg, testLogger, mockShortener, mockAudit)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/shorten",
+		bytes.NewBufferString(`{"url":"https://conflict.example.com"}`),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	h.HandlePostShortURLJSON(rr, req)
+
+	res := rr.Result()
+	defer res.Body.Close()
+	resBody, _ := io.ReadAll(res.Body)
+
+	// Должны получить 500 из-за ошибки построения полного URL
+	assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
+	assert.Equal(t, `{"error":"Internal Server Error"}`+"\n", string(resBody))
 }
