@@ -380,30 +380,44 @@ func TestHandleGetUserURLsJSON(t *testing.T) {
 func TestHandlePingRepository(t *testing.T) {
 	testCfg := testConfig()
 	testLogger, _ := logger.NewLogger("debug")
-	mockShortener := new(mocks.Shortener)
-	mockShortener.On("PingRepository", mock.Anything).Return(nil)
-	mockAudit := new(mocks.AuditService)
-	mockAudit.On("NotifyAll", mock.Anything).Return(nil)
-	h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
 
 	tests := []struct {
 		name         string
+		mockSetup    func(*mocks.Shortener)
 		expectedCode int
 	}{
 		{
-			name:         "Simple positive case",
+			name: "Successful ping",
+			mockSetup: func(m *mocks.Shortener) {
+				m.On("PingRepository", mock.Anything).Return(nil)
+			},
 			expectedCode: http.StatusOK,
 		},
+		{
+			name: "Ping failure",
+			mockSetup: func(m *mocks.Shortener) {
+				m.On("PingRepository", mock.Anything).Return(errors.New("connection failed"))
+			},
+			expectedCode: http.StatusInternalServerError,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mockShortener := new(mocks.Shortener)
+			tt.mockSetup(mockShortener)
+			mockAudit := new(mocks.AuditService)
+			h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
 			req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 			rr := httptest.NewRecorder()
 
 			h.HandlePingRepository(rr, req)
+
 			res := rr.Result()
 			defer res.Body.Close()
-			assert.Equal(t, tt.expectedCode, res.StatusCode, "Response code didn't match expected")
+
+			assert.Equal(t, tt.expectedCode, res.StatusCode)
 		})
 	}
 }
@@ -759,4 +773,208 @@ func TestHandlePostShortURLJSON_URLConflict_BuildFullURLError(t *testing.T) {
 	// Должны получить 500 из-за ошибки построения полного URL
 	assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
 	assert.Equal(t, `{"error":"Internal Server Error"}`+"\n", string(resBody))
+}
+
+func TestHandleDeleteShortURLsBatchJSON(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+
+	tests := []struct {
+		name         string
+		body         string
+		userID       string
+		mockSetup    func(*mocks.Shortener)
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:   "Successful deletion request",
+			body:   `["abc123", "def456"]`,
+			userID: "user123",
+			mockSetup: func(m *mocks.Shortener) {
+				m.On("DeleteUserShortURLsBatch", mock.Anything, "user123", []string{"abc123", "def456"}).
+					Return(nil)
+			},
+			expectedCode: http.StatusAccepted,
+			expectedBody: "",
+		},
+		{
+			name:         "Invalid JSON",
+			body:         `invalid json`,
+			userID:       "user123",
+			mockSetup:    func(m *mocks.Shortener) {},
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"incorrect json"}` + "\n",
+		},
+		{
+			name:   "Deletion queue full",
+			body:   `["abc123", "def456"]`,
+			userID: "user123",
+			mockSetup: func(m *mocks.Shortener) {
+				m.On("DeleteUserShortURLsBatch", mock.Anything, "user123", []string{"abc123", "def456"}).
+					Return(errors.New("queue full"))
+			},
+			expectedCode: http.StatusTooManyRequests,
+			expectedBody: `{"error":"Too Many Requests"}` + "\n",
+		},
+		{
+			name:         "Empty request body",
+			body:         "",
+			userID:       "user123",
+			mockSetup:    func(m *mocks.Shortener) {},
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"incorrect json"}` + "\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockShortener := new(mocks.Shortener)
+			tt.mockSetup(mockShortener)
+			mockAudit := new(mocks.AuditService)
+			h := NewShortenerHandler(testCfg, testLogger, mockShortener, mockAudit)
+
+			req := httptest.NewRequest(http.MethodDelete, "/api/user/urls", bytes.NewBufferString(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			ctx := context.WithValue(req.Context(), middleware.UserIDKey, tt.userID)
+			req = req.WithContext(ctx)
+			rr := httptest.NewRecorder()
+
+			h.HandleDeleteShortURLsBatchJSON(rr, req)
+
+			res := rr.Result()
+			defer res.Body.Close()
+			resBody, _ := io.ReadAll(res.Body)
+
+			assert.Equal(t, tt.expectedCode, res.StatusCode)
+			assert.Equal(t, tt.expectedBody, string(resBody))
+		})
+	}
+}
+
+func TestReadBody(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	h := NewShortenerHandler(testCfg, testLogger, nil, nil)
+
+	tests := []struct {
+		name        string
+		body        string
+		want        string
+		expectError bool
+	}{
+		{
+			name:        "Valid body",
+			body:        "test content",
+			want:        "test content",
+			expectError: false,
+		},
+		{
+			name:        "Empty body",
+			body:        "",
+			want:        "",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tt.body))
+			result, err := h.readBody(req)
+
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, result)
+			}
+		})
+	}
+}
+
+func TestValidateURL(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	h := NewShortenerHandler(testCfg, testLogger, nil, nil)
+
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{
+			name:    "Valid HTTP URL",
+			url:     "http://example.com",
+			wantErr: false,
+		},
+		{
+			name:    "Valid HTTPS URL",
+			url:     "https://example.com",
+			wantErr: false,
+		},
+		{
+			name:    "Invalid URL",
+			url:     "not-a-url",
+			wantErr: true,
+		},
+		{
+			name:    "Empty URL",
+			url:     "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := h.validateURL(tt.url)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestBuildFullURL(t *testing.T) {
+	testCfg := testConfig()
+	testLogger, _ := logger.NewLogger("debug")
+	h := NewShortenerHandler(testCfg, testLogger, nil, nil)
+
+	tests := []struct {
+		name        string
+		baseURL     string
+		shortURL    string
+		want        string
+		expectError bool
+	}{
+		{
+			name:        "Valid URL combination",
+			baseURL:     "http://localhost:8080",
+			shortURL:    "abc123",
+			want:        "http://localhost:8080/abc123",
+			expectError: false,
+		},
+		{
+			name:        "Empty short URL",
+			baseURL:     "http://localhost:8080",
+			shortURL:    "",
+			want:        "http://localhost:8080",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h.cfg.BaseURL = tt.baseURL
+			result, err := h.buildFullURL(tt.shortURL)
+
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, result)
+			}
+		})
+	}
 }
