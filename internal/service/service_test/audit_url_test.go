@@ -62,3 +62,48 @@ func TestAuditURL_Notify_InvalidURL(t *testing.T) {
 	err := auditURL.Notify(event)
 	assert.Error(t, err)
 }
+
+func TestAuditURL_Notify_ServerError(t *testing.T) {
+	var requestCount int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	auditURL := service.NewAuditURL(server.URL)
+
+	event := model.AuditEvent{
+		TS:     time.Now().Unix(),
+		Action: model.ActionShorten,
+		UserID: "test-user",
+		URL:    "https://example.com",
+	}
+
+	err := auditURL.Notify(event)
+	require.NoError(t, err) // AuditURL не проверяет статус ответа
+
+	assert.Equal(t, int32(1), atomic.LoadInt32(&requestCount))
+}
+
+func TestAuditURL_Notify_Timeout(t *testing.T) {
+	// Сервер который долго отвечает
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(100 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	auditURL := service.NewAuditURL(server.URL)
+
+	event := model.AuditEvent{
+		TS:     time.Now().Unix(),
+		Action: model.ActionShorten,
+		UserID: "test-user",
+		URL:    "https://example.com",
+	}
+
+	err := auditURL.Notify(event)
+	assert.NoError(t, err)
+}
