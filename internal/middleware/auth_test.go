@@ -37,10 +37,7 @@ func TestNewAuthMiddleware(t *testing.T) {
 	authorizer := &mockAuthorizer{}
 	middleware := NewAuthMiddleware(authorizer, logger)
 
-	if middleware == nil {
-		t.Error("Expected middleware to be created")
-	}
-	if middleware.authorizer != authorizer {
+	if middleware == nil || middleware.authorizer != authorizer {
 		t.Error("Expected authorizer to be set")
 	}
 }
