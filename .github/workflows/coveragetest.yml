@@ -21,6 +21,13 @@ jobs:
         with:
           config: ./.testcoverage.yml
 
+      - name: Debug coverage outputs
+        run: |
+          echo "Coverage outcome: ${{ steps.coverage.outcome }}"
+          echo "Coverage report: ${{ steps.coverage.outputs.report }}"
+          echo "All coverage outputs:"
+          echo "${{ toJSON(steps.coverage.outputs) }}"
+
       # Post coverage report as comment - только для PR в том же репозитории
       - name: post coverage report
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
