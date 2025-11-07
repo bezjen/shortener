@@ -16,6 +16,7 @@ jobs:
       - name: generate test coverage
         run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./internal/...
       - name: Go test coverage check
+        id: coverage
         uses: vladopajic/go-test-coverage@v2
         continue-on-error: true
         with:
