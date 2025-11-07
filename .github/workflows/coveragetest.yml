@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  statictest:
+  coveragetest:
     runs-on: ubuntu-latest
     container: golang:1.24
     steps:
