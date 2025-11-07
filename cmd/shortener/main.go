@@ -15,7 +15,16 @@ import (
 	_ "net/http/pprof"
 )
 
+// Global build information variables
+// These are set during build process using ldflags
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
+	printBuildInfo()
 	config.ParseConfig()
 	cfg := config.AppConfig
 
@@ -55,4 +64,26 @@ func main() {
 	}()
 
 	<-ctx.Done()
+}
+
+// printBuildInfo outputs build version, date and commit information
+func printBuildInfo() {
+	version := buildVersion
+	if version == "" {
+		version = "N/A"
+	}
+
+	date := buildDate
+	if date == "" {
+		date = "N/A"
+	}
+
+	commit := buildCommit
+	if commit == "" {
+		commit = "N/A"
+	}
+
+	log.Printf("Build version: %s\n", version)
+	log.Printf("Build date: %s\n", date)
+	log.Printf("Build commit: %s\n", commit)
 }
