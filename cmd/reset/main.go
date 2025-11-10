@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -15,8 +16,13 @@ import (
 )
 
 func main() {
-	root := "."
+	var ignorePatternsStr string
+	var root string
+	flag.StringVar(&ignorePatternsStr, "ignore", ".git,vendor,node_modules,cmd/reset", "Comma-separated list of ignore patterns")
+	flag.StringVar(&root, "root", ".", "Root directory with sources")
+	flag.Parse()
 
+	ignorePatterns := strings.Split(ignorePatternsStr, ",")
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
 		log.Printf("Error getting absolute path: %v\n", err)
@@ -24,8 +30,9 @@ func main() {
 	}
 
 	log.Printf("Scanning project root: %s\n", absRoot)
+	log.Printf("Ignore patterns: %v\n", ignorePatterns)
 
-	count, err := generateResetMethodsRecursive(absRoot)
+	count, err := generateResetMethodsRecursive(absRoot, ignorePatterns)
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 		os.Exit(1)
@@ -38,7 +45,7 @@ func main() {
 	}
 }
 
-func generateResetMethodsRecursive(root string) (int, error) {
+func generateResetMethodsRecursive(root string, ignorePatterns []string) (int, error) {
 	totalCount := 0
 
 	err := filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
@@ -51,17 +58,16 @@ func generateResetMethodsRecursive(root string) (int, error) {
 		}
 
 		base := filepath.Base(path)
-		if strings.Contains(path, ".git") ||
-			strings.Contains(path, "vendor") ||
-			strings.Contains(path, "node_modules") ||
-			strings.HasPrefix(base, ".") {
-			if info.IsDir() {
-				return filepath.SkipDir
+		shouldSkip := false
+
+		for _, pattern := range ignorePatterns {
+			if strings.Contains(path, pattern) {
+				shouldSkip = true
+				break
 			}
-			return nil
 		}
 
-		if strings.Contains(path, filepath.Join("cmd", "reset")) {
+		if shouldSkip || strings.HasPrefix(base, ".") {
 			if info.IsDir() {
 				return filepath.SkipDir
 			}
