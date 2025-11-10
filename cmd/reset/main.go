@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,22 +19,22 @@ func main() {
 
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting absolute path: %v\n", err)
+		log.Printf("Error getting absolute path: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Scanning project root: %s\n", absRoot)
+	log.Printf("Scanning project root: %s\n", absRoot)
 
 	count, err := generateResetMethodsRecursive(absRoot)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		log.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
 
 	if count == 0 {
-		fmt.Println("No structures with '// generate:reset' comment found")
+		log.Println("No structures with '// generate:reset' comment found")
 	} else {
-		fmt.Printf("Successfully generated reset methods for %d structures\n", count)
+		log.Printf("Successfully generated reset methods for %d structures\n", count)
 	}
 }
 
@@ -69,7 +70,7 @@ func generateResetMethodsRecursive(root string) (int, error) {
 
 		count, err := generateResetMethods(path)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: error processing %s: %v\n", path, err)
+			log.Printf("Warning: error processing %s: %v\n", path, err)
 		}
 		totalCount += count
 
@@ -94,7 +95,7 @@ func generateResetMethods(dir string) (int, error) {
 
 	for _, pkg := range pkgs {
 		for filename, file := range pkg.Files {
-			fmt.Printf("Processing file: %s\n", filename)
+			log.Printf("Processing file: %s\n", filename)
 			methods := findResetStructs(fset, file)
 			resetMethods = append(resetMethods, methods...)
 		}
@@ -104,11 +105,10 @@ func generateResetMethods(dir string) (int, error) {
 		return 0, nil
 	}
 
-	fmt.Printf("Generating reset methods in %s for structs: ", dir)
+	log.Printf("Generating reset methods in %s for structs: ", dir)
 	for _, method := range resetMethods {
-		fmt.Printf("%s ", method.StructName)
+		log.Printf("%s ", method.StructName)
 	}
-	fmt.Println()
 
 	err = writeResetFile(dir, resetMethods)
 	if err != nil {
@@ -248,7 +248,7 @@ func writeResetFile(dir string, methods []resetMethod) error {
 
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: formatting error in %s: %v\n", dir, err)
+		log.Printf("Warning: formatting error in %s: %v\n", dir, err)
 		formatted = buf.Bytes()
 	}
 
