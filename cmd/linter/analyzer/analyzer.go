@@ -3,6 +3,8 @@ package analyzer
 
 import (
 	"go/ast"
+	"go/types"
+
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -31,14 +33,14 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			return
 		}
 
-		if isLogFatalCall(call) {
+		if isLogFatalCall(call, pass) {
 			if !isInMainPackageAndFunction(pass) {
 				pass.Reportf(call.Pos(), "log.Fatal is not allowed outside main function of main package")
 			}
 			return
 		}
 
-		if isOSExitCall(call) {
+		if isOSExitCall(call, pass) {
 			if !isInMainPackageAndFunction(pass) {
 				pass.Reportf(call.Pos(), "os.Exit is not allowed outside main function of main package")
 			}
@@ -56,27 +58,44 @@ func isPanicCall(call *ast.CallExpr) bool {
 	return false
 }
 
-func isLogFatalCall(call *ast.CallExpr) bool {
+func isLogFatalCall(call *ast.CallExpr, pass *analysis.Pass) bool {
 	selExpr, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
 		return false
 	}
 
+	if selExpr.Sel.Name != "Fatal" &&
+		selExpr.Sel.Name != "Fatalf" &&
+		selExpr.Sel.Name != "Fatalln" {
+		return false
+	}
+
 	if ident, ok := selExpr.X.(*ast.Ident); ok {
-		return ident.Name == "log" && (selExpr.Sel.Name == "Fatal" ||
-			selExpr.Sel.Name == "Fatalf" || selExpr.Sel.Name == "Fatalln")
+		if obj, exists := pass.TypesInfo.Uses[ident]; exists {
+			if pkgName, ok := obj.(*types.PkgName); ok {
+				return pkgName.Imported().Path() == "log"
+			}
+		}
 	}
 	return false
 }
 
-func isOSExitCall(call *ast.CallExpr) bool {
+func isOSExitCall(call *ast.CallExpr, pass *analysis.Pass) bool {
 	selExpr, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
 		return false
 	}
 
+	if selExpr.Sel.Name != "Exit" {
+		return false
+	}
+
 	if ident, ok := selExpr.X.(*ast.Ident); ok {
-		return ident.Name == "os" && selExpr.Sel.Name == "Exit"
+		if obj, exists := pass.TypesInfo.Uses[ident]; exists {
+			if pkgName, ok := obj.(*types.PkgName); ok {
+				return pkgName.Imported().Path() == "os"
+			}
+		}
 	}
 	return false
 }
