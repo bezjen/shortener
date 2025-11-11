@@ -25,8 +25,7 @@ func main() {
 	ignorePatterns := strings.Split(ignorePatternsStr, ",")
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
-		log.Printf("Error getting absolute path: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error getting absolute path: %v\n", err)
 	}
 
 	log.Printf("Scanning project root: %s\n", absRoot)
@@ -34,8 +33,7 @@ func main() {
 
 	count, err := generateResetMethodsRecursive(absRoot, ignorePatterns)
 	if err != nil {
-		log.Printf("Error: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error: %v\n", err)
 	}
 
 	if count == 0 {
@@ -102,7 +100,7 @@ func generateResetMethods(dir string) (int, error) {
 	for _, pkg := range pkgs {
 		for filename, file := range pkg.Files {
 			log.Printf("Processing file: %s\n", filename)
-			methods := findResetStructs(fset, file)
+			methods := findResetStructs(file)
 			resetMethods = append(resetMethods, methods...)
 		}
 	}
@@ -137,7 +135,7 @@ type fieldInfo struct {
 	IsMap     bool
 }
 
-func findResetStructs(fset *token.FileSet, file *ast.File) []resetMethod {
+func findResetStructs(file *ast.File) []resetMethod {
 	var methods []resetMethod
 
 	ast.Inspect(file, func(n ast.Node) bool {

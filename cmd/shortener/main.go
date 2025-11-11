@@ -30,14 +30,12 @@ func main() {
 
 	shortenerLogger, err := logger.NewLogger(cfg.LogLevel)
 	if err != nil {
-		log.Printf("Error during logger initialization: %v", err)
-		return
+		log.Fatalf("Error during logger initialization: %v", err)
 	}
 
 	storage, err := db.InitDB(cfg)
 	if err != nil {
-		log.Printf("Error during storage initialization: %v", err)
-		return
+		log.Fatalf("Error during storage initialization: %v", err)
 	}
 	defer func(storage repository.Repository) {
 		err = storage.Close()
