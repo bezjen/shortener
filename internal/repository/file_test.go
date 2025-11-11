@@ -93,6 +93,109 @@ func TestFileRepositoryErrNotFound(t *testing.T) {
 	})
 }
 
+func TestFileRepositorySaveBatch(t *testing.T) {
+	repo, cleanup := setupFileRepository(t)
+	defer cleanup()
+
+	tests := []struct {
+		name  string
+		batch []model.URL
+	}{
+		{
+			name: "Save batch successfully",
+			batch: []model.URL{
+				*model.NewURL("qwerty12", "https://practicum.yandex.ru/"),
+				*model.NewURL("qwerty13", "https://example.com/"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := repo.SaveBatch(context.TODO(), "", tt.batch)
+			assert.NoError(t, err)
+
+			for _, url := range tt.batch {
+				result, err := repo.GetByShortURL(context.TODO(), url.ShortURL)
+				assert.NoError(t, err)
+				assert.Equal(t, &url, result)
+			}
+		})
+	}
+}
+
+func TestFileRepositorySaveBatchErrConflict(t *testing.T) {
+	repo, cleanup := setupFileRepository(t)
+	defer cleanup()
+
+	existingURL := model.NewURL("qwerty12", "https://practicum.yandex.ru/")
+	err := repo.Save(context.TODO(), "", *existingURL)
+	assert.NoError(t, err)
+
+	batch := []model.URL{
+		*existingURL,
+		*model.NewURL("qwerty13", "https://example.com/"),
+	}
+
+	err = repo.SaveBatch(context.TODO(), "", batch)
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, ErrShortURLConflict))
+}
+
+func TestFileRepositoryGetByUserID(t *testing.T) {
+	repo, cleanup := setupFileRepository(t)
+	defer cleanup()
+
+	urls, err := repo.GetByUserID(context.TODO(), "user1")
+	assert.Error(t, err)
+	assert.Nil(t, urls)
+	assert.Equal(t, "method not implemented", err.Error())
+}
+
+func TestFileRepositoryDeleteBatch(t *testing.T) {
+	repo, cleanup := setupFileRepository(t)
+	defer cleanup()
+
+	err := repo.DeleteBatch(context.TODO(), "user1", []string{"qwerty12"})
+	assert.Error(t, err)
+	assert.Equal(t, "method not implemented", err.Error())
+}
+
+func TestFileRepositoryPing(t *testing.T) {
+	repo, cleanup := setupFileRepository(t)
+	defer cleanup()
+
+	err := repo.Ping(context.TODO())
+	assert.NoError(t, err)
+}
+
+func TestFileRepositoryClose(t *testing.T) {
+	repo, _ := setupFileRepository(t)
+
+	err := repo.Close()
+	assert.NoError(t, err)
+	err = os.Remove(testConfig().FileStoragePath)
+	if err != nil {
+		t.Fatalf("Failed to remove file storage: %v", err)
+	}
+}
+
+func TestFileRepositorySaveShortURLDtoToStorage(t *testing.T) {
+	repo, cleanup := setupFileRepository(t)
+	defer cleanup()
+
+	url := model.URL{
+		ShortURL:    "test123",
+		OriginalURL: "https://test.com",
+	}
+
+	dto, err := repo.saveShortURLDtoToStorage(url)
+	assert.NoError(t, err)
+	assert.Equal(t, url.ShortURL, dto.ShortURL)
+	assert.Equal(t, url.OriginalURL, dto.OriginalURL)
+	assert.NotEmpty(t, dto.ID)
+}
+
 func setupFileRepository(t *testing.T) (*FileRepository, func()) {
 	testCfg := testConfig()
 

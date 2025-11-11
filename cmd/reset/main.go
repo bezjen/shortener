@@ -1,0 +1,346 @@
+package main
+
+import (
+	"bytes"
+	"flag"
+	"fmt"
+	"go/ast"
+	"go/format"
+	"go/parser"
+	"go/token"
+	"io/fs"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+func main() {
+	var ignorePatternsStr string
+	var root string
+	flag.StringVar(&ignorePatternsStr, "ignore", ".git,vendor,node_modules,cmd/reset", "Comma-separated list of ignore patterns")
+	flag.StringVar(&root, "root", ".", "Root directory with sources")
+	flag.Parse()
+
+	ignorePatterns := strings.Split(ignorePatternsStr, ",")
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		log.Fatalf("Error getting absolute path: %v\n", err)
+	}
+
+	log.Printf("Scanning project root: %s\n", absRoot)
+	log.Printf("Ignore patterns: %v\n", ignorePatterns)
+
+	count, err := generateResetMethodsRecursive(absRoot, ignorePatterns)
+	if err != nil {
+		log.Fatalf("Error: %v\n", err)
+	}
+
+	if count == 0 {
+		log.Println("No structures with '// generate:reset' comment found")
+	} else {
+		log.Printf("Successfully generated reset methods for %d structures\n", count)
+	}
+}
+
+func generateResetMethodsRecursive(root string, ignorePatterns []string) (int, error) {
+	totalCount := 0
+
+	err := filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			return nil
+		}
+
+		base := filepath.Base(path)
+		shouldSkip := false
+
+		for _, pattern := range ignorePatterns {
+			if strings.Contains(path, pattern) {
+				shouldSkip = true
+				break
+			}
+		}
+
+		if shouldSkip || strings.HasPrefix(base, ".") {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		count, err := generateResetMethods(path)
+		if err != nil {
+			log.Printf("Warning: error processing %s: %v\n", path, err)
+		}
+		totalCount += count
+
+		return nil
+	})
+
+	return totalCount, err
+}
+
+func generateResetMethods(dir string) (int, error) {
+	fset := token.NewFileSet()
+	pkgs, err := parser.ParseDir(fset, dir, func(fi fs.FileInfo) bool {
+		return !strings.HasSuffix(fi.Name(), "_test.go") &&
+			!strings.HasSuffix(fi.Name(), "reset.gen.go")
+	}, parser.ParseComments)
+
+	if err != nil {
+		return 0, nil
+	}
+
+	var resetMethods []resetMethod
+
+	for _, pkg := range pkgs {
+		for filename, file := range pkg.Files {
+			log.Printf("Processing file: %s\n", filename)
+			methods := findResetStructs(file)
+			resetMethods = append(resetMethods, methods...)
+		}
+	}
+
+	if len(resetMethods) == 0 {
+		return 0, nil
+	}
+
+	log.Printf("Generating reset methods in %s for structs: ", dir)
+	for _, method := range resetMethods {
+		log.Printf("%s ", method.StructName)
+	}
+
+	err = writeResetFile(dir, resetMethods)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(resetMethods), nil
+}
+
+type resetMethod struct {
+	StructName string
+	Fields     []fieldInfo
+}
+
+type fieldInfo struct {
+	Name      string
+	Type      string
+	IsPointer bool
+	IsSlice   bool
+	IsMap     bool
+}
+
+func findResetStructs(file *ast.File) []resetMethod {
+	var methods []resetMethod
+
+	ast.Inspect(file, func(n ast.Node) bool {
+		genDecl, ok := n.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.TYPE {
+			return true
+		}
+
+		hasResetComment := false
+		if genDecl.Doc != nil {
+			for _, comment := range genDecl.Doc.List {
+				if strings.Contains(comment.Text, "// generate:reset") {
+					hasResetComment = true
+					break
+				}
+			}
+		}
+
+		if !hasResetComment {
+			return true
+		}
+
+		for _, spec := range genDecl.Specs {
+			typeSpec, ok := spec.(*ast.TypeSpec)
+			if !ok {
+				continue
+			}
+
+			structType, ok := typeSpec.Type.(*ast.StructType)
+			if !ok {
+				continue
+			}
+
+			method := resetMethod{
+				StructName: typeSpec.Name.Name,
+			}
+
+			for _, field := range structType.Fields.List {
+				if len(field.Names) == 0 {
+					continue
+				}
+
+				for _, fieldName := range field.Names {
+					if !ast.IsExported(fieldName.Name) {
+						continue
+					}
+
+					fieldInfo := analyzeFieldType(field.Type, fieldName.Name)
+					method.Fields = append(method.Fields, fieldInfo)
+				}
+			}
+
+			methods = append(methods, method)
+		}
+
+		return true
+	})
+
+	return methods
+}
+
+func analyzeFieldType(expr ast.Expr, fieldName string) fieldInfo {
+	info := fieldInfo{
+		Name: fieldName,
+		Type: exprToString(expr),
+	}
+
+	switch e := expr.(type) {
+	case *ast.StarExpr:
+		info.IsPointer = true
+		baseInfo := analyzeFieldType(e.X, fieldName)
+		info.IsSlice = baseInfo.IsSlice
+		info.IsMap = baseInfo.IsMap
+		info.Type = baseInfo.Type
+	case *ast.ArrayType:
+		info.IsSlice = true
+	case *ast.MapType:
+		info.IsMap = true
+	}
+
+	return info
+}
+
+func exprToString(expr ast.Expr) string {
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return e.Name
+	case *ast.ArrayType:
+		return "[]" + exprToString(e.Elt)
+	case *ast.MapType:
+		return "map[" + exprToString(e.Key) + "]" + exprToString(e.Value)
+	case *ast.StarExpr:
+		return "*" + exprToString(e.X)
+	case *ast.SelectorExpr:
+		return exprToString(e.X) + "." + e.Sel.Name
+	default:
+		return fmt.Sprintf("%v", e)
+	}
+}
+
+func writeResetFile(dir string, methods []resetMethod) error {
+	var buf bytes.Buffer
+
+	pkgName := filepath.Base(dir)
+
+	buf.WriteString("// Code generated by reset. DO NOT EDIT.\n")
+	buf.WriteString("// generate:reset\n\n")
+	buf.WriteString("package " + pkgName + "\n\n")
+
+	for _, method := range methods {
+		buf.WriteString(generateResetMethod(method))
+		buf.WriteString("\n\n")
+	}
+
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		log.Printf("Warning: formatting error in %s: %v\n", dir, err)
+		formatted = buf.Bytes()
+	}
+
+	resetFile := filepath.Join(dir, "reset.gen.go")
+	return os.WriteFile(resetFile, formatted, 0644)
+}
+
+func generateResetMethod(method resetMethod) string {
+	var buf bytes.Buffer
+
+	buf.WriteString(fmt.Sprintf("func (r *%s) Reset() {\n", method.StructName))
+	buf.WriteString("    if r == nil {\n")
+	buf.WriteString("        return\n")
+	buf.WriteString("    }\n\n")
+
+	for _, field := range method.Fields {
+		buf.WriteString(generateFieldReset("r", field))
+	}
+
+	buf.WriteString("}")
+
+	return buf.String()
+}
+
+func generateFieldReset(receiver string, field fieldInfo) string {
+	fieldAccess := receiver + "." + field.Name
+
+	switch {
+	case field.IsSlice:
+		if field.IsPointer {
+			return fmt.Sprintf("    if %s != nil {\n        *%s = (*%s)[:0]\n    }\n", fieldAccess, fieldAccess, fieldAccess)
+		}
+		return fmt.Sprintf("    %s = %s[:0]\n", fieldAccess, fieldAccess)
+
+	case field.IsMap:
+		if field.IsPointer {
+			return fmt.Sprintf("    if %s != nil {\n        clear(*%s)\n    }\n", fieldAccess, fieldAccess)
+		}
+		return fmt.Sprintf("    clear(%s)\n", fieldAccess)
+
+	case field.IsPointer:
+		return generatePointerReset(fieldAccess, field.Type)
+
+	case isBasicType(field.Type):
+		return fmt.Sprintf("    %s = %s\n", fieldAccess, zeroValue(field.Type))
+
+	default:
+		return fmt.Sprintf("    if resetter, ok := interface{}(&%s).(interface{ Reset() }); ok {\n        resetter.Reset()\n    }\n", fieldAccess)
+	}
+}
+
+func generatePointerReset(fieldAccess, fieldType string) string {
+	if isBasicType(fieldType) {
+		return fmt.Sprintf("    if %s != nil {\n        *%s = %s\n    }\n", fieldAccess, fieldAccess, zeroValue(fieldType))
+	}
+
+	return fmt.Sprintf(`    if %s != nil {
+        if resetter, ok := interface{}(%s).(interface{ Reset() }); ok {
+            resetter.Reset()
+        } else {
+            // Если тип не имеет метода Reset, устанавливаем в nil
+            %s = nil
+        }
+    }
+`, fieldAccess, fieldAccess, fieldAccess)
+}
+
+func isBasicType(typeStr string) bool {
+	basicTypes := map[string]bool{
+		"int": true, "int8": true, "int16": true, "int32": true, "int64": true,
+		"uint": true, "uint8": true, "uint16": true, "uint32": true, "uint64": true,
+		"float32": true, "float64": true, "complex64": true, "complex128": true,
+		"string": true, "bool": true, "byte": true, "rune": true,
+	}
+	return basicTypes[typeStr]
+}
+
+func zeroValue(typeStr string) string {
+	switch typeStr {
+	case "string":
+		return `""`
+	case "bool":
+		return "false"
+	case "byte", "rune", "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64",
+		"float32", "float64", "complex64", "complex128":
+		return "0"
+	default:
+		return "nil"
+	}
+}
