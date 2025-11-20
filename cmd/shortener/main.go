@@ -55,7 +55,12 @@ func main() {
 	defer cancel()
 
 	go func() {
-		if err = http.ListenAndServe(cfg.ServerAddr, shortenerRouter); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if cfg.EnableHTTPS {
+			err = http.ListenAndServeTLS(cfg.ServerAddr, "./cert.pem", "./key.pem", shortenerRouter)
+		} else {
+			err = http.ListenAndServe(cfg.ServerAddr, shortenerRouter)
+		}
+		if !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("Server failed to start: %v", err)
 			cancel()
 		}
