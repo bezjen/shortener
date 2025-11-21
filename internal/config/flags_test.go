@@ -26,6 +26,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -41,6 +42,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -59,6 +61,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -76,6 +79,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -94,6 +98,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -111,6 +116,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -126,6 +132,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -143,6 +150,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -158,6 +166,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -175,6 +184,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -190,6 +200,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -207,11 +218,12 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "secret_key",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
 			name: "Flag for secret key",
-			args: []string{"shortener.exe", "-s=secret_key1"},
+			args: []string{"shortener.exe", "-k=secret_key1"},
 			env:  map[string]string{},
 			expectedConfig: Config{
 				ServerAddr:      "localhost:8080",
@@ -222,6 +234,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "secret_key1",
 				AuditFile:       "",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -239,6 +252,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "file_path",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -254,6 +268,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "file_path",
 				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -271,6 +286,7 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "audit_url",
+				EnableHTTPS:     false,
 			},
 		},
 		{
@@ -286,6 +302,75 @@ func TestParseFlags(t *testing.T) {
 				SecretKey:       "",
 				AuditFile:       "",
 				AuditURL:        "audit_url",
+				EnableHTTPS:     false,
+			},
+		},
+		{
+			name: "Env for enable https true",
+			args: []string{"shortener.exe"},
+			env: map[string]string{
+				"ENABLE_HTTPS": "true",
+			},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     true,
+			},
+		},
+		{
+			name: "Env for enable https not true",
+			args: []string{"shortener.exe"},
+			env: map[string]string{
+				"ENABLE_HTTPS": "false",
+			},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     false,
+			},
+		},
+		{
+			name: "Flag for enable https true",
+			args: []string{"shortener.exe", "--s=true"},
+			env:  map[string]string{},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     true,
+			},
+		},
+		{
+			name: "Flag for enable https not true",
+			args: []string{"shortener.exe", "--s=bad"},
+			env:  map[string]string{},
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     false,
 			},
 		},
 	}

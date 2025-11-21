@@ -18,6 +18,7 @@ type Config struct {
 	SecretKey       string // JWT secret key for authentication
 	AuditFile       string // Path to audit log file
 	AuditURL        string // URL for remote audit logging
+	EnableHTTPS     bool   // Enable HTTPS flag
 }
 
 // AppConfig is the global application configuration instance.
@@ -43,18 +44,20 @@ var AppConfig Config
 //   - -l: log level (default: "info")
 //   - -f: file storage path (default: "")
 //   - -d: database DSN (default: "")
-//   - -s: secret key (default: "")
+//   - -k: secret key (default: "")
 //   - -audit-file: audit file path (default: "")
 //   - -audit-url: audit service URL (default: "")
+//   - -s: enable https (default: "false")
 func ParseConfig() {
 	flagServerAddr := flag.String("a", "localhost:8080", "port to run server")
 	flagBaseURL := flag.String("b", "http://localhost:8080", "address and port of tiny url")
 	flagLogLevel := flag.String("l", "info", "log level")
 	flagFileStoragePath := flag.String("f", "", "path to file with data")
 	flagDatabaseDSN := flag.String("d", "", "postgres data source name in format `postgres://username:password@host:port/database_name?sslmode=disable`")
-	flagSecretKey := flag.String("s", "", "authorization secret key")
+	flagSecretKey := flag.String("k", "", "authorization secret key")
 	flagAuditFile := flag.String("audit-file", "", "path to audit file")
 	flagAuditURL := flag.String("audit-url", "", "audit url")
+	flagEnableHTTPS := flag.String("s", "false", "enable https")
 	flag.Parse()
 
 	addr, addrExists := os.LookupEnv("SERVER_ADDRESS")
@@ -104,5 +107,11 @@ func ParseConfig() {
 		AppConfig.AuditURL = auditURL
 	} else if *flagAuditURL != "" {
 		AppConfig.AuditURL = *flagAuditURL
+	}
+	enableHTTPS, enableHTTPSExists := os.LookupEnv("ENABLE_HTTPS")
+	if enableHTTPSExists {
+		AppConfig.EnableHTTPS = enableHTTPS == "true"
+	} else if *flagEnableHTTPS != "" {
+		AppConfig.EnableHTTPS = *flagEnableHTTPS == "true"
 	}
 }
