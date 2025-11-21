@@ -56,7 +56,7 @@ func main() {
 
 	go func() {
 		if cfg.EnableHTTPS {
-			err = http.ListenAndServeTLS(cfg.ServerAddr, "./cert.pem", "./key.pem", shortenerRouter)
+			err = http.ListenAndServeTLS(cfg.ServerAddr, "./server.crt", "./server.key", shortenerRouter)
 		} else {
 			err = http.ListenAndServe(cfg.ServerAddr, shortenerRouter)
 		}
