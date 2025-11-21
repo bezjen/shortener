@@ -6,11 +6,28 @@ import (
 	"testing"
 )
 
+// helper to create a temp config file
+func createTempConfig(t *testing.T, content string) string {
+	tmpFile, err := os.CreateTemp("", "config-*.json")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	if _, err := tmpFile.WriteString(content); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+	return tmpFile.Name()
+}
+
 func TestParseFlags(t *testing.T) {
 	tests := []struct {
 		name           string
 		args           []string
 		env            map[string]string
+		jsonContent    string
+		useConfigFlag  string
 		expectedConfig Config
 	}{
 		{
@@ -373,10 +390,173 @@ func TestParseFlags(t *testing.T) {
 				EnableHTTPS:     false,
 			},
 		},
+		{
+			name: "Config file only (via -c)",
+			args: []string{"shortener.exe"}, // flag added dynamically
+			env:  map[string]string{},
+			jsonContent: `{
+				"server_address": "localhost:5555",
+				"base_url": "http://config-file",
+				"enable_https": true
+			}`,
+			useConfigFlag: "-c",
+			expectedConfig: Config{
+				ServerAddr:      "localhost:5555",
+				BaseURL:         "http://config-file",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     true,
+			},
+		},
+		{
+			name: "Config file only (via -config)",
+			args: []string{"shortener.exe"},
+			env:  map[string]string{},
+			jsonContent: `{
+				"server_address": "localhost:4444"
+			}`,
+			useConfigFlag: "-config",
+			expectedConfig: Config{
+				ServerAddr:      "localhost:4444",
+				BaseURL:         "http://localhost:8080", // default kept
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     false,
+			},
+		},
+		{
+			name: "Config file only (via ENV)",
+			args: []string{"shortener.exe"},
+			env:  map[string]string{}, // CONFIG env added dynamically
+			jsonContent: `{
+				"log_level": "debug"
+			}`,
+			useConfigFlag: "env",
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "debug",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     false,
+			},
+		},
+		{
+			name: "Priority: Flag > Config File",
+			args: []string{"shortener.exe", "-a=flag:1111"},
+			env:  map[string]string{},
+			jsonContent: `{
+				"server_address": "json:2222",
+				"base_url": "http://json-url"
+			}`,
+			useConfigFlag: "-c",
+			expectedConfig: Config{
+				ServerAddr:      "flag:1111",       // Flag wins
+				BaseURL:         "http://json-url", // JSON used because flag not set
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     false,
+			},
+		},
+		{
+			name: "Priority: Env > Flag > Config File",
+			args: []string{"shortener.exe", "-a=flag:1111", "-b=http://flag-url"},
+			env: map[string]string{
+				"SERVER_ADDRESS": "env:0000",
+			},
+			jsonContent: `{
+				"server_address": "json:2222",
+				"base_url": "http://json-url",
+				"log_level": "warn"
+			}`,
+			useConfigFlag: "-c",
+			expectedConfig: Config{
+				ServerAddr:      "env:0000",        // Env wins over Flag and JSON
+				BaseURL:         "http://flag-url", // Flag wins over JSON
+				LogLevel:        "warn",            // JSON used
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     false,
+			},
+		},
+		{
+			name: "Boolean logic: JSON true, Flag default (false)",
+			args: []string{"shortener.exe"},
+			env:  map[string]string{},
+			jsonContent: `{
+				"enable_https": true
+			}`,
+			useConfigFlag: "-c",
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     true, // JSON should win over default flag
+			},
+		},
+		{
+			name: "Boolean logic: JSON true, Flag explicitly false",
+			args: []string{"shortener.exe", "-s=false"},
+			env:  map[string]string{},
+			jsonContent: `{
+				"enable_https": true
+			}`,
+			useConfigFlag: "-c",
+			expectedConfig: Config{
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
+				LogLevel:        "info",
+				FileStoragePath: "",
+				DatabaseDSN:     "",
+				SecretKey:       "",
+				AuditFile:       "",
+				AuditURL:        "",
+				EnableHTTPS:     false, // Explicit flag should win over JSON
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Setup Config File if needed
+			var tmpFile string
+			if tt.jsonContent != "" {
+				tmpFile = createTempConfig(t, tt.jsonContent)
+				defer os.Remove(tmpFile)
+
+				switch tt.useConfigFlag {
+				case "-c":
+					tt.args = append(tt.args, "-c="+tmpFile)
+				case "-config":
+					tt.args = append(tt.args, "-config="+tmpFile)
+				case "env":
+					tt.env["CONFIG"] = tmpFile
+				}
+			}
+
 			os.Args = tt.args
 			for key, val := range tt.env {
 				err := os.Setenv(key, val)

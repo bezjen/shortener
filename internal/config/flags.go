@@ -3,115 +3,174 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 )
 
 // Config holds all application configuration settings.
-// Settings can be provided via command-line flags or environment variables.
+// Settings can be provided via command-line flags, environment variables, or a configuration file.
 type Config struct {
-	ServerAddr      string // Server address in format "host:port"
-	BaseURL         string // Base URL for shortened links
-	LogLevel        string // Logging level (debug, info, warn, error)
-	FileStoragePath string // Path to file storage (if using file backend)
-	DatabaseDSN     string // PostgreSQL connection string
-	SecretKey       string // JWT secret key for authentication
-	AuditFile       string // Path to audit log file
-	AuditURL        string // URL for remote audit logging
-	EnableHTTPS     bool   // Enable HTTPS flag
+	ServerAddr      string `json:"server_address"`    // Server address in format "host:port"
+	BaseURL         string `json:"base_url"`          // Base URL for shortened links
+	LogLevel        string `json:"log_level"`         // Logging level (debug, info, warn, error)
+	FileStoragePath string `json:"file_storage_path"` // Path to file storage (if using file backend)
+	DatabaseDSN     string `json:"database_dsn"`      // PostgreSQL connection string
+	SecretKey       string `json:"secret_key"`        // JWT secret key for authentication
+	AuditFile       string `json:"audit_file"`        // Path to audit log file
+	AuditURL        string `json:"audit_url"`         // URL for remote audit logging
+	EnableHTTPS     bool   `json:"enable_https"`      // Enable HTTPS flag
 }
 
 // AppConfig is the global application configuration instance.
 var AppConfig Config
 
 // ParseConfig parses command-line flags and environment variables to populate AppConfig.
-// Environment variables take precedence over command-line flags.
-// Default values are provided for all configuration options.
-//
-// Supported environment variables:
-//   - SERVER_ADDRESS: server address (overrides -a flag)
-//   - BASE_URL: base URL for shortened links (overrides -b flag)
-//   - LOG_LEVEL: logging level (overrides -l flag)
-//   - FILE_STORAGE_PATH: file storage path (overrides -f flag)
-//   - DATABASE_DSN: PostgreSQL connection string (overrides -d flag)
-//   - SECRET_KEY: JWT secret key (overrides -s flag)
-//   - AUDIT_FILE: audit file path (overrides -audit-file flag)
-//   - AUDIT_URL: audit service URL (overrides -audit-url flag)
-//
-// Command-line flags:
-//   - -a: server address (default: "localhost:8080")
-//   - -b: base URL (default: "http://localhost:8080")
-//   - -l: log level (default: "info")
-//   - -f: file storage path (default: "")
-//   - -d: database DSN (default: "")
-//   - -k: secret key (default: "")
-//   - -audit-file: audit file path (default: "")
-//   - -audit-url: audit service URL (default: "")
-//   - -s: enable https (default: "false")
+// Priority (highest to lowest):
+// 1. Environment variables
+// 2. Command-line flags
+// 3. Configuration file (JSON)
+// 4. Default values
 func ParseConfig() {
-	flagServerAddr := flag.String("a", "localhost:8080", "port to run server")
-	flagBaseURL := flag.String("b", "http://localhost:8080", "address and port of tiny url")
-	flagLogLevel := flag.String("l", "info", "log level")
+	// Define flags with empty defaults to distinguish between "not set" and "set to default"
+	flagServerAddr := flag.String("a", "", "port to run server")
+	flagBaseURL := flag.String("b", "", "address and port of tiny url")
+	flagLogLevel := flag.String("l", "", "log level")
 	flagFileStoragePath := flag.String("f", "", "path to file with data")
-	flagDatabaseDSN := flag.String("d", "", "postgres data source name in format `postgres://username:password@host:port/database_name?sslmode=disable`")
+	flagDatabaseDSN := flag.String("d", "", "postgres data source name")
 	flagSecretKey := flag.String("k", "", "authorization secret key")
 	flagAuditFile := flag.String("audit-file", "", "path to audit file")
 	flagAuditURL := flag.String("audit-url", "", "audit url")
-	flagEnableHTTPS := flag.String("s", "false", "enable https")
+	flagEnableHTTPS := flag.String("s", "", "enable https")
+
+	// New flags for configuration file
+	flagConfig := flag.String("config", "", "path to config file")
+	flagC := flag.String("c", "", "path to config file (shorthand)")
+
 	flag.Parse()
 
-	addr, addrExists := os.LookupEnv("SERVER_ADDRESS")
-	if addrExists {
-		AppConfig.ServerAddr = addr
-	} else {
+	// Initialize with hardcoded defaults
+	AppConfig = Config{
+		ServerAddr:  "localhost:8080",
+		BaseURL:     "http://localhost:8080",
+		LogLevel:    "info",
+		EnableHTTPS: false,
+	}
+
+	// Determine config file path: Env > Flag -config > Flag -c
+	cfgPath := ""
+	if envCfg, ok := os.LookupEnv("CONFIG"); ok {
+		cfgPath = envCfg
+	} else if *flagConfig != "" {
+		cfgPath = *flagConfig
+	} else if *flagC != "" {
+		cfgPath = *flagC
+	}
+
+	// Load JSON config if path is provided
+	if cfgPath != "" {
+		fileData, err := os.ReadFile(cfgPath)
+		if err == nil {
+			// Use a struct with pointers to distinguish between missing fields and zero values
+			type fileConfig struct {
+				ServerAddr      *string `json:"server_address"`
+				BaseURL         *string `json:"base_url"`
+				LogLevel        *string `json:"log_level"`
+				FileStoragePath *string `json:"file_storage_path"`
+				DatabaseDSN     *string `json:"database_dsn"`
+				SecretKey       *string `json:"secret_key"`
+				AuditFile       *string `json:"audit_file"`
+				AuditURL        *string `json:"audit_url"`
+				EnableHTTPS     *bool   `json:"enable_https"`
+			}
+			var fc fileConfig
+			if err := json.Unmarshal(fileData, &fc); err == nil {
+				if fc.ServerAddr != nil {
+					AppConfig.ServerAddr = *fc.ServerAddr
+				}
+				if fc.BaseURL != nil {
+					AppConfig.BaseURL = *fc.BaseURL
+				}
+				if fc.LogLevel != nil {
+					AppConfig.LogLevel = *fc.LogLevel
+				}
+				if fc.FileStoragePath != nil {
+					AppConfig.FileStoragePath = *fc.FileStoragePath
+				}
+				if fc.DatabaseDSN != nil {
+					AppConfig.DatabaseDSN = *fc.DatabaseDSN
+				}
+				if fc.SecretKey != nil {
+					AppConfig.SecretKey = *fc.SecretKey
+				}
+				if fc.AuditFile != nil {
+					AppConfig.AuditFile = *fc.AuditFile
+				}
+				if fc.AuditURL != nil {
+					AppConfig.AuditURL = *fc.AuditURL
+				}
+				if fc.EnableHTTPS != nil {
+					AppConfig.EnableHTTPS = *fc.EnableHTTPS
+				}
+			}
+		}
+	}
+
+	// Apply Flags (override JSON/Default if set)
+	if *flagServerAddr != "" {
 		AppConfig.ServerAddr = *flagServerAddr
 	}
-	baseURL, baseURLExists := os.LookupEnv("BASE_URL")
-	if baseURLExists {
-		AppConfig.BaseURL = baseURL
-	} else {
+	if *flagBaseURL != "" {
 		AppConfig.BaseURL = *flagBaseURL
 	}
-	logLevel, logLevelExists := os.LookupEnv("LOG_LEVEL")
-	if logLevelExists {
-		AppConfig.LogLevel = logLevel
-	} else {
+	if *flagLogLevel != "" {
 		AppConfig.LogLevel = *flagLogLevel
 	}
-	fileStoragePath, fileStoragePathExists := os.LookupEnv("FILE_STORAGE_PATH")
-	if fileStoragePathExists {
-		AppConfig.FileStoragePath = fileStoragePath
-	} else {
+	if *flagFileStoragePath != "" {
 		AppConfig.FileStoragePath = *flagFileStoragePath
 	}
-	databaseDSN, databaseDSNExists := os.LookupEnv("DATABASE_DSN")
-	if databaseDSNExists {
-		AppConfig.DatabaseDSN = databaseDSN
-	} else {
+	if *flagDatabaseDSN != "" {
 		AppConfig.DatabaseDSN = *flagDatabaseDSN
 	}
-	secretKey, secretKeyExists := os.LookupEnv("SECRET_KEY")
-	if secretKeyExists {
-		AppConfig.SecretKey = secretKey
-	} else if *flagSecretKey != "" {
+	if *flagSecretKey != "" {
 		AppConfig.SecretKey = *flagSecretKey
 	}
-	auditFile, auditFileExists := os.LookupEnv("AUDIT_FILE")
-	if auditFileExists {
-		AppConfig.AuditFile = auditFile
-	} else if *flagAuditFile != "" {
+	if *flagAuditFile != "" {
 		AppConfig.AuditFile = *flagAuditFile
 	}
-	auditURL, auditURLExists := os.LookupEnv("AUDIT_URL")
-	if auditURLExists {
-		AppConfig.AuditURL = auditURL
-	} else if *flagAuditURL != "" {
+	if *flagAuditURL != "" {
 		AppConfig.AuditURL = *flagAuditURL
 	}
-	enableHTTPS, enableHTTPSExists := os.LookupEnv("ENABLE_HTTPS")
-	if enableHTTPSExists {
-		AppConfig.EnableHTTPS = enableHTTPS == "true"
-	} else if *flagEnableHTTPS != "" {
+	if *flagEnableHTTPS != "" {
 		AppConfig.EnableHTTPS = *flagEnableHTTPS == "true"
+	}
+
+	// Apply Environment Variables (override everything)
+	if addr, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
+		AppConfig.ServerAddr = addr
+	}
+	if baseURL, ok := os.LookupEnv("BASE_URL"); ok {
+		AppConfig.BaseURL = baseURL
+	}
+	if logLevel, ok := os.LookupEnv("LOG_LEVEL"); ok {
+		AppConfig.LogLevel = logLevel
+	}
+	if fileStoragePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
+		AppConfig.FileStoragePath = fileStoragePath
+	}
+	if databaseDSN, ok := os.LookupEnv("DATABASE_DSN"); ok {
+		AppConfig.DatabaseDSN = databaseDSN
+	}
+	if secretKey, ok := os.LookupEnv("SECRET_KEY"); ok {
+		AppConfig.SecretKey = secretKey
+	}
+	if auditFile, ok := os.LookupEnv("AUDIT_FILE"); ok {
+		AppConfig.AuditFile = auditFile
+	}
+	if auditURL, ok := os.LookupEnv("AUDIT_URL"); ok {
+		AppConfig.AuditURL = auditURL
+	}
+	if enableHTTPS, ok := os.LookupEnv("ENABLE_HTTPS"); ok {
+		AppConfig.EnableHTTPS = enableHTTPS == "true"
 	}
 }
