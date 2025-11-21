@@ -13,6 +13,10 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 // Global build information variables
@@ -51,22 +55,33 @@ func main() {
 	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener, auditService)
 	shortenerRouter := router.NewRouter(shortenerLogger, authorizer, *shortenerHandler)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	server := &http.Server{
+		Addr:    cfg.ServerAddr,
+		Handler: shortenerRouter,
+	}
 
 	go func() {
+		var err error
 		if cfg.EnableHTTPS {
-			err = http.ListenAndServeTLS(cfg.ServerAddr, "./server.crt", "./server.key", shortenerRouter)
+			err = server.ListenAndServeTLS("./server.crt", "./server.key")
 		} else {
-			err = http.ListenAndServe(cfg.ServerAddr, shortenerRouter)
+			err = server.ListenAndServe()
 		}
 		if !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("Server failed to start: %v", err)
-			cancel()
+			log.Fatalf("Server failed to start: %v", err)
 		}
 	}()
 
-	<-ctx.Done()
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	<-quit
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
 }
 
 // printBuildInfo outputs build version, date and commit information
