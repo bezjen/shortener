@@ -1,176 +1,112 @@
 // Package config provides configuration management for the URL shortening service.
-// It handles command-line flags, environment variables, and configuration defaults.
 package config
 
 import (
-	"encoding/json"
-	"flag"
-	"os"
+	"log"
+
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 // Config holds all application configuration settings.
-// Settings can be provided via command-line flags, environment variables, or a configuration file.
 type Config struct {
-	ServerAddr      string `json:"server_address"`    // Server address in format "host:port"
-	BaseURL         string `json:"base_url"`          // Base URL for shortened links
-	LogLevel        string `json:"log_level"`         // Logging level (debug, info, warn, error)
-	FileStoragePath string `json:"file_storage_path"` // Path to file storage (if using file backend)
-	DatabaseDSN     string `json:"database_dsn"`      // PostgreSQL connection string
-	SecretKey       string `json:"secret_key"`        // JWT secret key for authentication
-	AuditFile       string `json:"audit_file"`        // Path to audit log file
-	AuditURL        string `json:"audit_url"`         // URL for remote audit logging
-	EnableHTTPS     bool   `json:"enable_https"`      // Enable HTTPS flag
+	ServerAddr      string `mapstructure:"server_address" json:"server_address"`
+	BaseURL         string `mapstructure:"base_url" json:"base_url"`
+	LogLevel        string `mapstructure:"log_level" json:"log_level"`
+	FileStoragePath string `mapstructure:"file_storage_path" json:"file_storage_path"`
+	DatabaseDSN     string `mapstructure:"database_dsn" json:"database_dsn"`
+	SecretKey       string `mapstructure:"secret_key" json:"secret_key"`
+	AuditFile       string `mapstructure:"audit_file" json:"audit_file"`
+	AuditURL        string `mapstructure:"audit_url" json:"audit_url"`
+	EnableHTTPS     bool   `mapstructure:"enable_https" json:"enable_https"`
 }
 
 // AppConfig is the global application configuration instance.
 var AppConfig Config
 
-// ParseConfig parses command-line flags and environment variables to populate AppConfig.
-// Priority (highest to lowest):
-// 1. Environment variables
-// 2. Command-line flags
-// 3. Configuration file (JSON)
+// ParseConfig parses command-line flags, environment variables, and config files to populate AppConfig.
+// Priority (Standard Viper):
+// 1. Command-line flags
+// 2. Environment variables
+// 3. Configuration file
 // 4. Default values
 func ParseConfig() {
-	// Define flags with empty defaults to distinguish between "not set" and "set to default"
-	flagServerAddr := flag.String("a", "", "port to run server")
-	flagBaseURL := flag.String("b", "", "address and port of tiny url")
-	flagLogLevel := flag.String("l", "", "log level")
-	flagFileStoragePath := flag.String("f", "", "path to file with data")
-	flagDatabaseDSN := flag.String("d", "", "postgres data source name")
-	flagSecretKey := flag.String("k", "", "authorization secret key")
-	flagAuditFile := flag.String("audit-file", "", "path to audit file")
-	flagAuditURL := flag.String("audit-url", "", "audit url")
-	flagEnableHTTPS := flag.String("s", "", "enable https")
+	// 1. Set Defaults
+	viper.SetDefault("server_address", "localhost:8080")
+	viper.SetDefault("base_url", "http://localhost:8080")
+	viper.SetDefault("log_level", "info")
+	viper.SetDefault("enable_https", false)
 
-	// New flags for configuration file
-	flagConfig := flag.String("config", "", "path to config file")
-	flagC := flag.String("c", "", "path to config file (shorthand)")
-
-	flag.Parse()
-
-	// Initialize with hardcoded defaults
-	AppConfig = Config{
-		ServerAddr:  "localhost:8080",
-		BaseURL:     "http://localhost:8080",
-		LogLevel:    "info",
-		EnableHTTPS: false,
+	// 2. Define Flags
+	// Check if flags are already defined to avoid "flag redefined" panic in tests if ParseConfig is called multiple times without reset
+	if pflag.Lookup("a") == nil {
+		pflag.StringP("a", "a", "", "port to run server")
+		pflag.StringP("b", "b", "", "address and port of tiny url")
+		pflag.StringP("l", "l", "", "log level")
+		pflag.StringP("f", "f", "", "path to file with data")
+		pflag.StringP("d", "d", "", "postgres data source name")
+		pflag.StringP("k", "k", "", "authorization secret key")
+		pflag.String("audit-file", "", "path to audit file")
+		pflag.String("audit-url", "", "audit url")
+		pflag.BoolP("s", "s", false, "enable https")
+		pflag.StringP("config", "c", "", "path to config file")
 	}
 
-	// Determine config file path: Env > Flag -config > Flag -c
-	cfgPath := ""
-	if envCfg, ok := os.LookupEnv("CONFIG"); ok {
-		cfgPath = envCfg
-	} else if *flagConfig != "" {
-		cfgPath = *flagConfig
-	} else if *flagC != "" {
-		cfgPath = *flagC
+	// Parse the flags
+	// Note: In tests we set ContinueOnError, so this won't exit the app on bad flags
+	pflag.Parse()
+
+	// 3. Bind Flags to Viper Keys
+	bindFlag("server_address", "a")
+	bindFlag("base_url", "b")
+	bindFlag("log_level", "l")
+	bindFlag("file_storage_path", "f")
+	bindFlag("database_dsn", "d")
+	bindFlag("secret_key", "k")
+	bindFlag("audit_file", "audit-file")
+	bindFlag("audit_url", "audit-url")
+	bindFlag("enable_https", "s")
+
+	// 4. Bind Environment Variables
+	viper.AutomaticEnv()
+	bindEnv("server_address", "SERVER_ADDRESS")
+	bindEnv("base_url", "BASE_URL")
+	bindEnv("log_level", "LOG_LEVEL")
+	bindEnv("file_storage_path", "FILE_STORAGE_PATH")
+	bindEnv("database_dsn", "DATABASE_DSN")
+	bindEnv("secret_key", "SECRET_KEY")
+	bindEnv("audit_file", "AUDIT_FILE")
+	bindEnv("audit_url", "AUDIT_URL")
+	bindEnv("enable_https", "ENABLE_HTTPS")
+	bindEnv("config", "CONFIG")
+
+	// 5. Load Config File
+	cfgPath, _ := pflag.CommandLine.GetString("config")
+	if cfgPath == "" {
+		cfgPath = viper.GetString("config")
 	}
 
-	// Load JSON config if path is provided
 	if cfgPath != "" {
-		fileData, err := os.ReadFile(cfgPath)
-		if err == nil {
-			// Use a struct with pointers to distinguish between missing fields and zero values
-			type fileConfig struct {
-				ServerAddr      *string `json:"server_address"`
-				BaseURL         *string `json:"base_url"`
-				LogLevel        *string `json:"log_level"`
-				FileStoragePath *string `json:"file_storage_path"`
-				DatabaseDSN     *string `json:"database_dsn"`
-				SecretKey       *string `json:"secret_key"`
-				AuditFile       *string `json:"audit_file"`
-				AuditURL        *string `json:"audit_url"`
-				EnableHTTPS     *bool   `json:"enable_https"`
-			}
-			var fc fileConfig
-			if err := json.Unmarshal(fileData, &fc); err == nil {
-				if fc.ServerAddr != nil {
-					AppConfig.ServerAddr = *fc.ServerAddr
-				}
-				if fc.BaseURL != nil {
-					AppConfig.BaseURL = *fc.BaseURL
-				}
-				if fc.LogLevel != nil {
-					AppConfig.LogLevel = *fc.LogLevel
-				}
-				if fc.FileStoragePath != nil {
-					AppConfig.FileStoragePath = *fc.FileStoragePath
-				}
-				if fc.DatabaseDSN != nil {
-					AppConfig.DatabaseDSN = *fc.DatabaseDSN
-				}
-				if fc.SecretKey != nil {
-					AppConfig.SecretKey = *fc.SecretKey
-				}
-				if fc.AuditFile != nil {
-					AppConfig.AuditFile = *fc.AuditFile
-				}
-				if fc.AuditURL != nil {
-					AppConfig.AuditURL = *fc.AuditURL
-				}
-				if fc.EnableHTTPS != nil {
-					AppConfig.EnableHTTPS = *fc.EnableHTTPS
-				}
-			}
+		viper.SetConfigFile(cfgPath)
+		if err := viper.ReadInConfig(); err != nil {
+			log.Printf("Error reading config file: %s", err)
 		}
 	}
 
-	// Apply Flags (override JSON/Default if set)
-	if *flagServerAddr != "" {
-		AppConfig.ServerAddr = *flagServerAddr
+	// 6. Unmarshal
+	if err := viper.Unmarshal(&AppConfig); err != nil {
+		log.Fatalf("Unable to decode into struct: %v", err)
 	}
-	if *flagBaseURL != "" {
-		AppConfig.BaseURL = *flagBaseURL
-	}
-	if *flagLogLevel != "" {
-		AppConfig.LogLevel = *flagLogLevel
-	}
-	if *flagFileStoragePath != "" {
-		AppConfig.FileStoragePath = *flagFileStoragePath
-	}
-	if *flagDatabaseDSN != "" {
-		AppConfig.DatabaseDSN = *flagDatabaseDSN
-	}
-	if *flagSecretKey != "" {
-		AppConfig.SecretKey = *flagSecretKey
-	}
-	if *flagAuditFile != "" {
-		AppConfig.AuditFile = *flagAuditFile
-	}
-	if *flagAuditURL != "" {
-		AppConfig.AuditURL = *flagAuditURL
-	}
-	if *flagEnableHTTPS != "" {
-		AppConfig.EnableHTTPS = *flagEnableHTTPS == "true"
-	}
+}
 
-	// Apply Environment Variables (override everything)
-	if addr, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
-		AppConfig.ServerAddr = addr
+func bindFlag(key, flagName string) {
+	if err := viper.BindPFlag(key, pflag.Lookup(flagName)); err != nil {
+		log.Printf("Error binding flag %s: %v", flagName, err)
 	}
-	if baseURL, ok := os.LookupEnv("BASE_URL"); ok {
-		AppConfig.BaseURL = baseURL
-	}
-	if logLevel, ok := os.LookupEnv("LOG_LEVEL"); ok {
-		AppConfig.LogLevel = logLevel
-	}
-	if fileStoragePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
-		AppConfig.FileStoragePath = fileStoragePath
-	}
-	if databaseDSN, ok := os.LookupEnv("DATABASE_DSN"); ok {
-		AppConfig.DatabaseDSN = databaseDSN
-	}
-	if secretKey, ok := os.LookupEnv("SECRET_KEY"); ok {
-		AppConfig.SecretKey = secretKey
-	}
-	if auditFile, ok := os.LookupEnv("AUDIT_FILE"); ok {
-		AppConfig.AuditFile = auditFile
-	}
-	if auditURL, ok := os.LookupEnv("AUDIT_URL"); ok {
-		AppConfig.AuditURL = auditURL
-	}
-	if enableHTTPS, ok := os.LookupEnv("ENABLE_HTTPS"); ok {
-		AppConfig.EnableHTTPS = enableHTTPS == "true"
+}
+
+func bindEnv(key, envName string) {
+	if err := viper.BindEnv(key, envName); err != nil {
+		log.Printf("Error binding env %s: %v", envName, err)
 	}
 }

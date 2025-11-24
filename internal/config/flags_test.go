@@ -1,9 +1,11 @@
 package config
 
 import (
-	"flag"
 	"os"
 	"testing"
+
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 // helper to create a temp config file
@@ -100,15 +102,15 @@ func TestParseFlags(t *testing.T) {
 			},
 		},
 		{
-			name: "Both environment and flags (use env)",
+			name: "Both environment and flags (Flag wins)",
 			args: []string{"shortener.exe", "-a=shortener:8080", "-b=http://shortener"},
 			env: map[string]string{
 				"SERVER_ADDRESS": "localhost:8080",
 				"BASE_URL":       "http://localhost",
 			},
 			expectedConfig: Config{
-				ServerAddr:      "localhost:8080",
-				BaseURL:         "http://localhost",
+				ServerAddr:      "shortener:8080",
+				BaseURL:         "http://shortener",
 				LogLevel:        "info",
 				FileStoragePath: "",
 				DatabaseDSN:     "",
@@ -329,13 +331,13 @@ func TestParseFlags(t *testing.T) {
 				"ENABLE_HTTPS": "true",
 			},
 			expectedConfig: Config{
-				ServerAddr:      "localhost:8080",
-				BaseURL:         "http://localhost:8080",
 				LogLevel:        "info",
 				FileStoragePath: "",
 				DatabaseDSN:     "",
 				SecretKey:       "",
 				AuditFile:       "",
+				ServerAddr:      "localhost:8080",
+				BaseURL:         "http://localhost:8080",
 				AuditURL:        "",
 				EnableHTTPS:     true,
 			},
@@ -375,7 +377,7 @@ func TestParseFlags(t *testing.T) {
 			},
 		},
 		{
-			name: "Flag for enable https not true",
+			name: "Flag for enable https not true (invalid syntax handled)",
 			args: []string{"shortener.exe", "--s=bad"},
 			env:  map[string]string{},
 			expectedConfig: Config{
@@ -474,7 +476,7 @@ func TestParseFlags(t *testing.T) {
 			},
 		},
 		{
-			name: "Priority: Env > Flag > Config File",
+			name: "Priority: Flag > Env > Config File",
 			args: []string{"shortener.exe", "-a=flag:1111", "-b=http://flag-url"},
 			env: map[string]string{
 				"SERVER_ADDRESS": "env:0000",
@@ -486,7 +488,7 @@ func TestParseFlags(t *testing.T) {
 			}`,
 			useConfigFlag: "-c",
 			expectedConfig: Config{
-				ServerAddr:      "env:0000",        // Env wins over Flag and JSON
+				ServerAddr:      "flag:1111",       // Flag wins over Env
 				BaseURL:         "http://flag-url", // Flag wins over JSON
 				LogLevel:        "warn",            // JSON used
 				FileStoragePath: "",
@@ -541,7 +543,11 @@ func TestParseFlags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup Config File if needed
+			viper.Reset()
+
+			pflag.CommandLine = pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
+			AppConfig = Config{}
+
 			var tmpFile string
 			if tt.jsonContent != "" {
 				tmpFile = createTempConfig(t, tt.jsonContent)
@@ -551,7 +557,7 @@ func TestParseFlags(t *testing.T) {
 				case "-c":
 					tt.args = append(tt.args, "-c="+tmpFile)
 				case "-config":
-					tt.args = append(tt.args, "-config="+tmpFile)
+					tt.args = append(tt.args, "--config="+tmpFile)
 				case "env":
 					tt.env["CONFIG"] = tmpFile
 				}
@@ -559,28 +565,18 @@ func TestParseFlags(t *testing.T) {
 
 			os.Args = tt.args
 			for key, val := range tt.env {
-				err := os.Setenv(key, val)
-				if err != nil {
-					t.Errorf("Failed to set env, error: %v", err)
-					return
-				}
+				_ = os.Setenv(key, val)
 			}
-
-			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-			AppConfig = Config{}
+			defer func() {
+				for key := range tt.env {
+					_ = os.Unsetenv(key)
+				}
+			}()
 
 			ParseConfig()
 
 			if AppConfig != tt.expectedConfig {
-				t.Errorf("Expected %+v, got %+v", tt.expectedConfig, AppConfig)
-			}
-
-			for key := range tt.env {
-				err := os.Unsetenv(key)
-				if err != nil {
-					t.Errorf("Failed to unset env, error: %v", err)
-					return
-				}
+				t.Errorf("Mismatch in %s:\nExpected: %+v\nGot:      %+v", tt.name, tt.expectedConfig, AppConfig)
 			}
 		})
 	}
