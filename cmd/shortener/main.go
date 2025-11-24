@@ -13,8 +13,8 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -60,7 +60,15 @@ func main() {
 		Handler: shortenerRouter,
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	go func() {
+		defer wg.Done()
+
 		var err error
 		if cfg.EnableHTTPS {
 			err = server.ListenAndServeTLS("./server.crt", "./server.key")
@@ -68,20 +76,20 @@ func main() {
 			err = server.ListenAndServe()
 		}
 		if !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Server failed to start: %v", err)
+			log.Printf("Server failed: %v", err)
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	<-ctx.Done()
 
-	<-quit
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Printf("Server forced to shutdown: %v", err)
 	}
+
+	wg.Wait()
 }
 
 // printBuildInfo outputs build version, date and commit information
