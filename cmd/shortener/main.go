@@ -13,6 +13,10 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 )
 
 // Global build information variables
@@ -51,17 +55,41 @@ func main() {
 	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener, auditService)
 	shortenerRouter := router.NewRouter(shortenerLogger, authorizer, *shortenerHandler)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	server := &http.Server{
+		Addr:    cfg.ServerAddr,
+		Handler: shortenerRouter,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
 
 	go func() {
-		if err = http.ListenAndServe(cfg.ServerAddr, shortenerRouter); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("Server failed to start: %v", err)
-			cancel()
+		defer wg.Done()
+
+		var err error
+		if cfg.EnableHTTPS {
+			err = server.ListenAndServeTLS("./server.crt", "./server.key")
+		} else {
+			err = server.ListenAndServe()
+		}
+		if !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("Server failed: %v", err)
 		}
 	}()
 
 	<-ctx.Done()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	wg.Wait()
 }
 
 // printBuildInfo outputs build version, date and commit information
