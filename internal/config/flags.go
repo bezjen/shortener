@@ -19,6 +19,7 @@ type Config struct {
 	AuditFile       string `mapstructure:"audit_file" json:"audit_file"`
 	AuditURL        string `mapstructure:"audit_url" json:"audit_url"`
 	EnableHTTPS     bool   `mapstructure:"enable_https" json:"enable_https"`
+	TrustedSubnet   string `mapstructure:"trusted_subnet" json:"trusted_subnet"`
 }
 
 // AppConfig is the global application configuration instance.
@@ -49,6 +50,7 @@ func ParseConfig() {
 		pflag.String("audit-file", "", "path to audit file")
 		pflag.String("audit-url", "", "audit url")
 		pflag.BoolP("s", "s", false, "enable https")
+		pflag.StringP("t", "t", "", "trusted subnet (CIDR)")
 		pflag.StringP("config", "c", "", "path to config file")
 	}
 
@@ -66,6 +68,7 @@ func ParseConfig() {
 	bindFlag("audit_file", "audit-file")
 	bindFlag("audit_url", "audit-url")
 	bindFlag("enable_https", "s")
+	bindFlag("trusted_subnet", "t")
 
 	// 4. Bind Environment Variables
 	viper.AutomaticEnv()
@@ -79,6 +82,7 @@ func ParseConfig() {
 	bindEnv("audit_url", "AUDIT_URL")
 	bindEnv("enable_https", "ENABLE_HTTPS")
 	bindEnv("config", "CONFIG")
+	bindEnv("trusted_subnet", "TRUSTED_SUBNET")
 
 	// 5. Load Config File
 	cfgPath, _ := pflag.CommandLine.GetString("config")
