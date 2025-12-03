@@ -86,6 +86,20 @@ type Shortener interface {
 	//   - error: error if lookup fails
 	GetURLsByUserID(ctx context.Context, userID string) ([]model.URL, error)
 
+	// GetStats retrieves service statistics including total URLs and unique users.
+	// Used for administrative purposes and requires trusted subnet access.
+	//
+	// Parameters:
+	//   - ctx: context for request cancellation and timeouts
+	//
+	// Returns:
+	//   - int: total number of shortened URLs in the service
+	//   - int: total number of unique users in the service
+	//   - error: any error that occurred during statistics retrieval
+	//
+	// Note: Access to this method should be restricted to trusted networks.
+	GetStats(ctx context.Context) (urlsCount int, usersCount int, err error)
+
 	// PingRepository checks the connectivity to the underlying data storage.
 	//
 	// Parameters:
@@ -248,6 +262,22 @@ func (u *URLShortener) GetURLByShortURLPart(ctx context.Context, shortURLPart st
 //   - error: error if lookup fails
 func (u *URLShortener) GetURLsByUserID(ctx context.Context, userID string) ([]model.URL, error) {
 	return u.storage.GetByUserID(ctx, userID)
+}
+
+// GetStats retrieves service statistics including total URLs and unique users.
+// Used for administrative purposes and requires trusted subnet access.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//
+// Returns:
+//   - int: total number of shortened URLs in the service
+//   - int: total number of unique users in the service
+//   - error: any error that occurred during statistics retrieval
+//
+// Note: Access to this method should be restricted to trusted networks.
+func (u *URLShortener) GetStats(ctx context.Context) (urlsCount int, usersCount int, err error) {
+	return u.storage.GetStats(ctx)
 }
 
 // PingRepository checks the connectivity to the underlying data storage.
