@@ -2,9 +2,9 @@ VERSION ?= "dev"
 DATE := $(shell date -u +%Y-%m-%d_%H:%M:%S)
 COMMIT := $(shell git rev-parse --short HEAD)
 
-PROTO_DIR = api/shortener/v1
+PROTO_DIR = api/v1
 PROTO_FILE = $(PROTO_DIR)/shortener.proto
-PROTO_OUT = api/shortener/v1
+PROTO_OUT = pkg
 
 .PHONY: build protoc
 
@@ -16,7 +16,7 @@ build:
 	-o shortener cmd/shortener/main.go
 
 protoc:
-	@echo "Generating protobuf code..."
-	protoc --go_out=. --go_opt=paths=source_relative \
-	       --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+	mkdir -p $(PROTO_OUT)
+	protoc --go_out=$(PROTO_OUT) --go_opt=paths=source_relative \
+	       --go-grpc_out=$(PROTO_OUT) --go-grpc_opt=paths=source_relative \
 	       $(PROTO_FILE)
