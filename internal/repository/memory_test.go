@@ -163,6 +163,15 @@ func TestInMemoryRepositoryDeleteBatch(t *testing.T) {
 	assert.Equal(t, "method not implemented", err.Error())
 }
 
+func TestInMemoryRepositoryGetStats(t *testing.T) {
+	repo, cleanup := setupFileRepository(t)
+	defer cleanup()
+
+	_, _, err := repo.GetStats(context.TODO())
+	assert.Error(t, err)
+	assert.Equal(t, "method not implemented", err.Error())
+}
+
 func TestInMemoryRepositoryPing(t *testing.T) {
 	repo := NewInMemoryRepository()
 

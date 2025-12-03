@@ -5,10 +5,10 @@ package repository
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/bezjen/shortener/internal/config"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"io"
 	"os"
 	"sync"
@@ -140,7 +140,7 @@ func (f *FileRepository) GetByShortURL(_ context.Context, shortURL string) (*mod
 //   - []model.URL: slice of URLs (always empty for file storage)
 //   - error: always returns "method not implemented" error
 func (f *FileRepository) GetByUserID(_ context.Context, _ string) ([]model.URL, error) {
-	return nil, fmt.Errorf("method not implemented")
+	return nil, errors.New("method not implemented")
 }
 
 // DeleteBatch marks multiple short URLs as deleted.
@@ -154,7 +154,22 @@ func (f *FileRepository) GetByUserID(_ context.Context, _ string) ([]model.URL, 
 // Returns:
 //   - error: always returns "method not implemented" error
 func (f *FileRepository) DeleteBatch(_ context.Context, _ string, _ []string) error {
-	return fmt.Errorf("method not implemented")
+	return errors.New("method not implemented")
+}
+
+// GetStats retrieves service statistics including total URLs and unique users.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//
+// Returns:
+//   - int: total number of shortened URLs in the service
+//   - int: total number of unique users in the service
+//   - error: any error that occurred during statistics retrieval
+//
+// Note: Access to this method should be restricted to trusted networks.
+func (f *FileRepository) GetStats(_ context.Context) (urlsCount int, usersCount int, err error) {
+	return 0, 0, errors.New("method not implemented")
 }
 
 // Ping checks the connectivity to file storage.
