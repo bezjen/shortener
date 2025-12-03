@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -328,6 +329,78 @@ func (h *ShortenerHandler) HandleDeleteShortURLsBatchJSON(rw http.ResponseWriter
 	}
 
 	rw.WriteHeader(http.StatusAccepted)
+}
+
+// HandleGetStats handles GET requests to retrieve service statistics.
+// Only accessible from IP addresses within the trusted subnet.
+//
+// Headers:
+//   - X-Real-IP: Client IP address for trust verification (required)
+//
+// Responses:
+//   - 200 OK: Statistics retrieved successfully
+//   - 403 Forbidden: Client IP not in trusted subnet or trusted subnet not configured
+//   - 500 Internal Server Error: Failed to retrieve statistics
+//
+// Example request:
+//
+//	GET /api/internal/stats HTTP/1.1
+//	X-Real-IP: 192.168.1.100
+//
+// Example response:
+//
+//	HTTP/1.1 200 OK
+//	Content-Type: application/json
+//
+//	{"urls": 150, "users": 25}
+func (h *ShortenerHandler) HandleGetStats(rw http.ResponseWriter, r *http.Request) {
+	if h.cfg.TrustedSubnet == "" {
+		h.writeShortenJSONErrorResponse(rw, http.StatusForbidden, "Access forbidden")
+		return
+	}
+
+	clientIPStr := r.Header.Get("X-Real-IP")
+	if clientIPStr == "" {
+		h.writeShortenJSONErrorResponse(rw, http.StatusForbidden, "X-Real-IP header required")
+		return
+	}
+
+	clientIP := net.ParseIP(clientIPStr)
+	if clientIP == nil {
+		h.writeShortenJSONErrorResponse(rw, http.StatusForbidden, "Invalid client IP address")
+		return
+	}
+
+	_, trustedNet, err := net.ParseCIDR(h.cfg.TrustedSubnet)
+	if err != nil {
+		h.logger.Error("Failed to parse trusted subnet",
+			zap.Error(err),
+			zap.String("trusted_subnet", h.cfg.TrustedSubnet),
+		)
+		h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	if !trustedNet.Contains(clientIP) {
+		h.logger.Debug("Access denied from untrusted IP",
+			zap.String("client_ip", clientIPStr),
+			zap.String("trusted_subnet", h.cfg.TrustedSubnet),
+		)
+		h.writeShortenJSONErrorResponse(rw, http.StatusForbidden, http.StatusText(http.StatusForbidden))
+		return
+	}
+
+	urls, users, err := h.shortener.GetStats(r.Context())
+	if err != nil {
+		h.logger.Error("Failed to get service statistics",
+			zap.Error(err),
+		)
+		h.writeShortenJSONErrorResponse(rw, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	response := model.NewStatsResponse(urls, users)
+	h.writeJSONResponse(rw, http.StatusOK, response)
 }
 
 // HandlePingRepository handles health check requests to verify storage connectivity.

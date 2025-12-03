@@ -149,3 +149,37 @@ func NewUserURLResponseItem(shortURL string, originalURL string) *UserURLRespons
 		OriginalURL: originalURL,
 	}
 }
+
+// StatsResponse represents the JSON response structure for service statistics endpoint.
+//
+// Example:
+//
+//	{
+//	  "urls": 150,
+//	  "users": 25
+//	}
+type StatsResponse struct {
+	// URLs contains the total number of shortened URLs in the service.
+	// Example: 150
+	URLs int `json:"urls"`
+
+	// Users contains the total number of unique users in the service.
+	// Example: 25
+	Users int `json:"users"`
+}
+
+// NewStatsResponse creates a new StatsResponse instance.
+// Constructor function for service statistics response.
+//
+// Parameters:
+//   - urls: total number of shortened URLs
+//   - users: total number of unique users
+//
+// Returns:
+//   - *StatsResponse: initialized statistics response
+func NewStatsResponse(urls int, users int) *StatsResponse {
+	return &StatsResponse{
+		URLs:  urls,
+		Users: users,
+	}
+}
