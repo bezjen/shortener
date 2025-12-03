@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/bezjen/shortener/internal/model"
 	"github.com/jackc/pgerrcode"
@@ -206,6 +207,109 @@ func TestPostgresRepositoryGetByUserID(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedURLs, urls)
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPostgresRepositoryGetStats(t *testing.T) {
+	repo, mock, cleanup := setupPostgresRepository(t)
+	defer cleanup()
+
+	tests := []struct {
+		name          string
+		setupMock     func()
+		expectedURLs  int
+		expectedUsers int
+		expectedError error
+	}{
+		{
+			name: "Get stats with multiple users and URLs",
+			setupMock: func() {
+				rows := sqlmock.NewRows([]string{"urls_count", "users_count"}).
+					AddRow(150, 25)
+				mock.ExpectQuery(`SELECT\s+COALESCE\(\(SELECT COUNT\(\*\) FROM t_short_url WHERE is_deleted = false\), 0\) as urls_count,\s+COALESCE\(\(SELECT COUNT\(DISTINCT user_id\) FROM t_short_url WHERE is_deleted = false AND user_id IS NOT NULL\), 0\) as users_count`).
+					WillReturnRows(rows)
+			},
+			expectedURLs:  150,
+			expectedUsers: 25,
+			expectedError: nil,
+		},
+		{
+			name: "Get stats with no URLs",
+			setupMock: func() {
+				rows := sqlmock.NewRows([]string{"urls_count", "users_count"}).
+					AddRow(0, 0)
+				mock.ExpectQuery(`SELECT\s+COALESCE\(\(SELECT COUNT\(\*\) FROM t_short_url WHERE is_deleted = false\), 0\) as urls_count,\s+COALESCE\(\(SELECT COUNT\(DISTINCT user_id\) FROM t_short_url WHERE is_deleted = false AND user_id IS NOT NULL\), 0\) as users_count`).
+					WillReturnRows(rows)
+			},
+			expectedURLs:  0,
+			expectedUsers: 0,
+			expectedError: nil,
+		},
+		{
+			name: "Get stats with only deleted URLs",
+			setupMock: func() {
+				rows := sqlmock.NewRows([]string{"urls_count", "users_count"}).
+					AddRow(0, 0)
+				mock.ExpectQuery(`SELECT\s+COALESCE\(\(SELECT COUNT\(\*\) FROM t_short_url WHERE is_deleted = false\), 0\) as urls_count,\s+COALESCE\(\(SELECT COUNT\(DISTINCT user_id\) FROM t_short_url WHERE is_deleted = false AND user_id IS NOT NULL\), 0\) as users_count`).
+					WillReturnRows(rows)
+			},
+			expectedURLs:  0,
+			expectedUsers: 0,
+			expectedError: nil,
+		},
+		{
+			name: "Get stats with URLs but no users (user_id is NULL)",
+			setupMock: func() {
+				rows := sqlmock.NewRows([]string{"urls_count", "users_count"}).
+					AddRow(50, 0)
+				mock.ExpectQuery(`SELECT\s+COALESCE\(\(SELECT COUNT\(\*\) FROM t_short_url WHERE is_deleted = false\), 0\) as urls_count,\s+COALESCE\(\(SELECT COUNT\(DISTINCT user_id\) FROM t_short_url WHERE is_deleted = false AND user_id IS NOT NULL\), 0\) as users_count`).
+					WillReturnRows(rows)
+			},
+			expectedURLs:  50,
+			expectedUsers: 0,
+			expectedError: nil,
+		},
+		{
+			name: "Get stats with database error",
+			setupMock: func() {
+				mock.ExpectQuery(`SELECT\s+COALESCE\(\(SELECT COUNT\(\*\) FROM t_short_url WHERE is_deleted = false\), 0\) as urls_count,\s+COALESCE\(\(SELECT COUNT\(DISTINCT user_id\) FROM t_short_url WHERE is_deleted = false AND user_id IS NOT NULL\), 0\) as users_count`).
+					WillReturnError(errors.New("database connection failed"))
+			},
+			expectedURLs:  0,
+			expectedUsers: 0,
+			expectedError: fmt.Errorf("failed to get service statistics: database connection failed"),
+		},
+		{
+			name: "Get stats with only one user and multiple URLs",
+			setupMock: func() {
+				rows := sqlmock.NewRows([]string{"urls_count", "users_count"}).
+					AddRow(100, 1)
+				mock.ExpectQuery(`SELECT\s+COALESCE\(\(SELECT COUNT\(\*\) FROM t_short_url WHERE is_deleted = false\), 0\) as urls_count,\s+COALESCE\(\(SELECT COUNT\(DISTINCT user_id\) FROM t_short_url WHERE is_deleted = false AND user_id IS NOT NULL\), 0\) as users_count`).
+					WillReturnRows(rows)
+			},
+			expectedURLs:  100,
+			expectedUsers: 1,
+			expectedError: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+
+			urls, users, err := repo.GetStats(context.TODO())
+
+			if tt.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedURLs, urls)
+				assert.Equal(t, tt.expectedUsers, users)
+			}
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
 }
 
 func TestPostgresRepositoryPing(t *testing.T) {

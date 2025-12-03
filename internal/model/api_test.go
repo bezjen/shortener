@@ -72,3 +72,18 @@ func TestShortenJSONResponse(t *testing.T) {
 		}
 	})
 }
+
+func TestNewStatsResponse(t *testing.T) {
+	urls := 150
+	users := 25
+
+	response := NewStatsResponse(urls, users)
+
+	if response.URLs != urls {
+		t.Errorf("Expected URLs %d, got %d", urls, response.URLs)
+	}
+
+	if response.Users != users {
+		t.Errorf("Expected Users %d, got %d", users, response.Users)
+	}
+}

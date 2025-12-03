@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/bezjen/shortener/internal/model"
+	"github.com/pkg/errors"
 	"sync"
 )
 
@@ -118,6 +119,21 @@ func (m *InMemoryRepository) GetByUserID(_ context.Context, _ string) ([]model.U
 //   - error: always returns "method not implemented" error
 func (m *InMemoryRepository) DeleteBatch(_ context.Context, _ string, _ []string) error {
 	return fmt.Errorf("method not implemented")
+}
+
+// GetStats retrieves service statistics including total URLs and unique users.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//
+// Returns:
+//   - int: total number of shortened URLs in the service
+//   - int: total number of unique users in the service
+//   - error: any error that occurred during statistics retrieval
+//
+// Note: Access to this method should be restricted to trusted networks.
+func (m *InMemoryRepository) GetStats(_ context.Context) (urlsCount int, usersCount int, err error) {
+	return 0, 0, errors.New("method not implemented")
 }
 
 // Ping checks the connectivity to in-memory storage.

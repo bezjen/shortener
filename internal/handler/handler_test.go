@@ -978,3 +978,89 @@ func TestBuildFullURL(t *testing.T) {
 		})
 	}
 }
+
+func TestHandleGetStats(t *testing.T) {
+	testCfg := testConfig()
+	testCfg.TrustedSubnet = "192.168.1.0/24"
+	testLogger, _ := logger.NewLogger("debug")
+
+	tests := []struct {
+		name          string
+		trustedSubnet string
+		clientIP      string
+		mockSetup     func(*mocks.Shortener)
+		expectedCode  int
+		expectedBody  string
+	}{
+		{
+			name:          "Access from trusted subnet",
+			trustedSubnet: "192.168.1.0/24",
+			clientIP:      "192.168.1.100",
+			mockSetup: func(m *mocks.Shortener) {
+				m.On("GetStats", mock.Anything).Return(150, 25, nil)
+			},
+			expectedCode: http.StatusOK,
+			expectedBody: `{"urls":150,"users":25}` + "\n",
+		},
+		{
+			name:          "Access from untrusted subnet",
+			trustedSubnet: "192.168.1.0/24",
+			clientIP:      "10.0.0.100",
+			mockSetup:     func(m *mocks.Shortener) {},
+			expectedCode:  http.StatusForbidden,
+			expectedBody:  `{"error":"Forbidden"}` + "\n",
+		},
+		{
+			name:          "No trusted subnet configured",
+			trustedSubnet: "",
+			clientIP:      "192.168.1.100",
+			mockSetup:     func(m *mocks.Shortener) {},
+			expectedCode:  http.StatusForbidden,
+			expectedBody:  `{"error":"Access forbidden"}` + "\n",
+		},
+		{
+			name:          "Invalid trusted subnet format",
+			trustedSubnet: "invalid-cidr",
+			clientIP:      "192.168.1.100",
+			mockSetup:     func(m *mocks.Shortener) {},
+			expectedCode:  http.StatusInternalServerError,
+			expectedBody:  `{"error":"Internal Server Error"}` + "\n",
+		},
+		{
+			name:          "Stats service error",
+			trustedSubnet: "192.168.1.0/24",
+			clientIP:      "192.168.1.100",
+			mockSetup: func(m *mocks.Shortener) {
+				m.On("GetStats", mock.Anything).Return(0, 0, errors.New("db error"))
+			},
+			expectedCode: http.StatusInternalServerError,
+			expectedBody: `{"error":"Internal Server Error"}` + "\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockShortener := new(mocks.Shortener)
+			tt.mockSetup(mockShortener)
+
+			mockAudit := new(mocks.AuditService)
+
+			cfg := testCfg
+			cfg.TrustedSubnet = tt.trustedSubnet
+			h := NewShortenerHandler(cfg, testLogger, mockShortener, mockAudit)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/internal/stats", nil)
+			req.Header.Set("X-Real-IP", tt.clientIP)
+
+			rr := httptest.NewRecorder()
+			h.HandleGetStats(rr, req)
+
+			res := rr.Result()
+			defer res.Body.Close()
+			resBody, _ := io.ReadAll(res.Body)
+
+			assert.Equal(t, tt.expectedCode, res.StatusCode)
+			assert.Equal(t, tt.expectedBody, string(resBody))
+		})
+	}
+}

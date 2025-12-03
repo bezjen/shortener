@@ -25,6 +25,7 @@ func TestNewRouter(t *testing.T) {
 		path         string
 		body         []byte
 		setupMocks   func(*mocks.Authorizer, *mocks.Shortener, *mocks.AuditService)
+		setupRequest func(*http.Request)
 		expectedCode int
 	}{
 		{
@@ -203,6 +204,30 @@ func TestNewRouter(t *testing.T) {
 			expectedCode: 429,
 		},
 		{
+			name:   "GET /api/internal/stats with trusted IP",
+			method: "GET",
+			path:   "/api/internal/stats",
+			body:   nil,
+			setupMocks: func(a *mocks.Authorizer, s *mocks.Shortener, audit *mocks.AuditService) {
+				a.On("CreateToken", mock.AnythingOfType("string")).Return("test-token", nil)
+				s.On("GetStats", mock.Anything).Return(150, 25, nil)
+			},
+			setupRequest: func(req *http.Request) {
+				req.Header.Set("X-Real-IP", "192.168.1.100")
+			},
+			expectedCode: 200,
+		},
+		{
+			name:   "GET /api/internal/stats without trusted subnet",
+			method: "GET",
+			path:   "/api/internal/stats",
+			body:   nil,
+			setupMocks: func(a *mocks.Authorizer, s *mocks.Shortener, audit *mocks.AuditService) {
+				a.On("CreateToken", mock.AnythingOfType("string")).Return("test-token", nil)
+			},
+			expectedCode: 403,
+		},
+		{
 			name:   "GET /debug/pprof/",
 			method: "GET",
 			path:   "/debug/pprof/",
@@ -224,7 +249,7 @@ func TestNewRouter(t *testing.T) {
 			tt.setupMocks(mockAuthorizer, mockShortener, mockAudit)
 
 			shortenerHandler := handler.NewShortenerHandler(
-				config.Config{BaseURL: "http://test.com"},
+				config.Config{BaseURL: "http://test.com", TrustedSubnet: "192.168.1.0/24"},
 				testLogger,
 				mockShortener,
 				mockAudit,
@@ -238,6 +263,11 @@ func TestNewRouter(t *testing.T) {
 				req = httptest.NewRequest(tt.method, tt.path, bytes.NewBuffer(tt.body))
 			} else {
 				req = httptest.NewRequest(tt.method, tt.path, nil)
+			}
+
+			// Применяем setupRequest если есть
+			if tt.setupRequest != nil {
+				tt.setupRequest(req)
 			}
 
 			// Для теста с аутентифицированным пользователем добавляем cookie

@@ -225,6 +225,32 @@ func (p *PostgresRepository) GetByUserID(ctx context.Context, userID string) ([]
 	return urls, nil
 }
 
+// GetStats retrieves service statistics including total URLs and unique users.
+//
+// Parameters:
+//   - ctx: context for request cancellation and timeouts
+//
+// Returns:
+//   - int: total number of shortened URLs in the service
+//   - int: total number of unique users in the service
+//   - error: any error that occurred during statistics retrieval
+//
+// Note: Access to this method should be restricted to trusted networks.
+func (p *PostgresRepository) GetStats(ctx context.Context) (urlsCount int, usersCount int, err error) {
+	query := `
+		SELECT 
+			COALESCE((SELECT COUNT(*) FROM t_short_url WHERE is_deleted = false), 0) as urls_count,
+			COALESCE((SELECT COUNT(DISTINCT user_id) FROM t_short_url WHERE is_deleted = false AND user_id IS NOT NULL), 0) as users_count
+	`
+
+	err = p.db.QueryRowContext(ctx, query).Scan(&urlsCount, &usersCount)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get service statistics: %w", err)
+	}
+
+	return urlsCount, usersCount, nil
+}
+
 // Ping checks the connectivity to PostgreSQL database.
 // Used for health checks and connection validation.
 //

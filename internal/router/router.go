@@ -60,6 +60,7 @@ func NewRouter(logger *logger.Logger,
 	r.Post("/api/shorten/batch", shortenerHandler.HandlePostShortURLBatchJSON)
 	r.Get("/api/user/urls", shortenerHandler.HandleGetUserURLsJSON)
 	r.Delete("/api/user/urls", shortenerHandler.HandleDeleteShortURLsBatchJSON)
+	r.Get("/api/internal/stats", shortenerHandler.HandleGetStats)
 
 	r.Mount("/debug", chimiddleware.Profiler())
 

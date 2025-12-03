@@ -3,20 +3,25 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/bezjen/shortener/internal/config"
-	"github.com/bezjen/shortener/internal/config/db"
-	"github.com/bezjen/shortener/internal/handler"
-	"github.com/bezjen/shortener/internal/logger"
-	"github.com/bezjen/shortener/internal/repository"
-	"github.com/bezjen/shortener/internal/router"
-	"github.com/bezjen/shortener/internal/service"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/bezjen/shortener/internal/config"
+	"github.com/bezjen/shortener/internal/config/db"
+	grpchandler "github.com/bezjen/shortener/internal/grpc"
+	"github.com/bezjen/shortener/internal/handler"
+	"github.com/bezjen/shortener/internal/logger"
+	"github.com/bezjen/shortener/internal/repository"
+	"github.com/bezjen/shortener/internal/router"
+	"github.com/bezjen/shortener/internal/service"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 // Global build information variables
@@ -26,6 +31,8 @@ var (
 	buildDate    string
 	buildCommit  string
 )
+
+const grpcPort = ":3200"
 
 func main() {
 	printBuildInfo()
@@ -54,29 +61,46 @@ func main() {
 	auditService.ConfigureObservers(cfg)
 	shortenerHandler := handler.NewShortenerHandler(cfg, shortenerLogger, urlShortener, auditService)
 	shortenerRouter := router.NewRouter(shortenerLogger, authorizer, *shortenerHandler)
-
-	server := &http.Server{
+	httpServer := &http.Server{
 		Addr:    cfg.ServerAddr,
 		Handler: shortenerRouter,
 	}
+
+	grpcHandler := grpchandler.NewHandler(cfg, shortenerLogger, authorizer, urlShortener, auditService)
+	listen, err := net.Listen("tcp", grpcPort)
+	if err != nil {
+		log.Fatalf("Failed to listen for gRPC: %v", err)
+	}
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(grpcHandler.UnaryInterceptorMiddleware()),
+	)
+	grpcHandler.RegisterService(grpcServer)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-
 	go func() {
 		defer wg.Done()
 
 		var err error
 		if cfg.EnableHTTPS {
-			err = server.ListenAndServeTLS("./server.crt", "./server.key")
+			err = httpServer.ListenAndServeTLS("./server.crt", "./server.key")
 		} else {
-			err = server.ListenAndServe()
+			err = httpServer.ListenAndServe()
 		}
 		if !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("Server failed: %v", err)
+			log.Printf("HTTP Server failed: %v", err)
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		shortenerLogger.Info("Starting gRPC server", zap.String("addr", grpcPort))
+
+		if err := grpcServer.Serve(listen); err != nil {
+			log.Printf("gRPC Server failed: %v", err)
 		}
 	}()
 
@@ -85,9 +109,10 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		log.Printf("HTTP Server forced to shutdown: %v", err)
 	}
+	grpcServer.GracefulStop()
 
 	wg.Wait()
 }
